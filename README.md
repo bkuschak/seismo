@@ -1,1 +1,1 @@
-# seismo
+Various stuff related to seimometer
