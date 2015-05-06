@@ -1,18 +1,25 @@
 #!/usr/bin/env python
-# Plot a seismic strip chart, typically for 24 hours of data
-# Uses text data input, with delimiters, with time and data point on each line
-#    0.00, 14234
-#    0.05, 23121
-#    0.10, 19682
 #
-# Divide the input data up hourly, for N hours, adjusting each X axis 0-60 minutes
-# Total Y axis = data_scale_per_line * N+1
-# Add scale_per_line to each hour's data, plot
-# Add custom Y-axis labels, the UTC time for each line
-# Add custom X-axis labels, 0 to 60 minutes
-# Add vertical grid evey 10 minutes
+# Plot a seismic strip chart, typically for 24 hours of data.
+# Also dump the data to a WAV file, so you can listen to it.
+# Uses text data input, with delimiters, with time and data point on each line
+#
+# You can get this from WinSDR using drf2txt (v11 or later):
+#    drf2txt -t -c LOW -n 0425_0000 720
+#
+# Then run this script, for example: 
+#    python plot_chart.py -x 1024 -y 768  --fs 200 --starttime "4/25/15 00:00 UTC"
+#        --hp 0.01 --lp 0.07 --decimate 100 --scale 40e-6 --station "Sunnyvale, CA" 
+#        --chan "BHZ Yuma2" -c "M7.8 - 34km ESE of Lamjung, Nepal 06:11:26 UTC" 
+#        --fontsize 10 042515_000000.txt
+#
+# Or for a list of options:
+#    python plot_chart.py -h
+#
+# Output files are chart.png and output.wav, by default
 #
 # B. Kuschak <bkuschak@yahoo.com> 4/28/15 
+#
 
 import numpy as np
 import matplotlib.pylab as plt
@@ -25,7 +32,7 @@ import dateutil
 import math
 
 
-#Plot frequency and phase response
+# Plot frequency and phase response
 def mfreqz(b,a=1):
 	w,h = signal.freqz(b,a)
 	h_dB = 20 * np.log10 (abs(h))
@@ -147,7 +154,7 @@ parser.add_argument('--starttime', dest='starttime', default=date,
 parser.add_argument('-c', '--comment', help='Add a comment to the title')
 args = parser.parse_args()
 
-starttime = dateutil.parser.parse(args.starttime)
+starttime = dateutil.parser.parse(args.starttime) # nice little utility, recognizes time strings
 
 if args.verbose:
 	print(args)
@@ -200,6 +207,12 @@ else:
 	scale = args.scale
 
 # Plot
+# Divide the input data up hourly, for N hours, adjusting each X axis 0-60 minutes
+# Total Y axis = data_scale_per_line * N+1
+# Add scale_per_line to each hour's data, plot
+# Add custom Y-axis labels, the UTC time for each line
+# Add custom X-axis labels, 0 to 60 minutes
+# Add vertical grid evey 10 minutes
 print('Plotting...')
 plt.rcParams['font.size'] = args.fontsize 	# global font size
 fig = plt.figure(figsize=(args.width / args.dpi, args.height / args.dpi), dpi=args.dpi)
@@ -228,7 +241,7 @@ str += '%.0f %sm/s/line\n' % (scale/factor, units)
 str += 'Maximum velocity: %.2f %sm/s at %02u:%02u:%02u' % (data_max/factor, units, hour_max, min_max, sec_max)
 if args.comment != None:
 	str += '\n%s' % (args.comment)
-plt.title(str)
+plt.title(str, fontsize=args.fontsize)
 
 # divide data into hourly blocks, for 24 hours
 # lines grow downward
@@ -260,6 +273,7 @@ for i in range(0, hours):
 		hourly_data = hourly_data - i*scale
 
 		plt.plot(hourly_t, hourly_data, linewidth=0.1, antialiased=False)
+		#plt.plot(hourly_t, hourly_data, linewidth=0.1, antialiased=True)
 
 # add labels to plot
 plt.yticks(ytickspos, yticks)
