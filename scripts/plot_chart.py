@@ -100,6 +100,35 @@ def nice_units(num):
 		return ('m', 1e-3)
 	return ('unknown', 1)
 
+# count number of lines in a file
+def count_lines(fname):
+	with open(fname) as f:
+		i = -1
+		for i, l in enumerate(f):
+			pass
+	return i + 1
+
+# Attempt to load faster than using numpy.fromtxt()
+# fromtxt took over a minute
+# this function took 46, 40, 26 seconds for slow, faster, fastest below
+def load_data(filename, delimiter):
+	print 'Counting lines...'
+	lines = count_lines(filename)			# so we can preallocate array
+	data = np.zeros((lines, 2), dtype=float)
+	n = 0
+	print 'Loading data...'
+	with open(filename, "r") as file:
+		for line in file:
+			# time, value
+			#data[n] = np.fromstring(line, sep=delimiter)	# slow
+			splitline = line.split(delimiter)
+			#data[n] = np.asarray(splitline)		# faster
+			data[n,0] = np.float(splitline[0])		# fastest
+			data[n,1] = np.float(splitline[1])		# fastest
+			n = n + 1
+	return data[:,0], data[:,1]
+
+
 # Defaults - cmd line can override these
 width = 900
 height = 1000
@@ -136,7 +165,7 @@ parser.add_argument('--dpi', type=int, default=dpi, help='pixels per inch (100 d
 parser.add_argument('--delimiter', default=delimiter, help='delimiter in the data file. default is ","')
 parser.add_argument('--scale', default=scale, type=float, help='scale in units (m/s) per line')
 parser.add_argument('--autoscale', action='store_true', help='autoscale based on peak, overrides --scale')
-parser.add_argument('--fs', default=fs, required=True, help='sample rate of the data')
+parser.add_argument('--fs', default=fs, type=float, required=True, help='sample rate of the data')
 parser.add_argument('--decimate', default=decimation, type=int, 
 	help='integer factor to decimate by')
 parser.add_argument('--decimation_order', default=decimation_order, type=int, 
@@ -160,16 +189,20 @@ if args.verbose:
 	print(args)
 	print starttime
 
+if args.lowpass >= args.fs/args.decimate/2:
+	print('Lowpass cutoff must be < fs/decimate/2, in this case %.3f Hz!' % (args.fs / args.decimate / 2))
+	sys.exit(1)
+
 # Read in data from file here
 # two columns, time, data.
 # generated using Larry's drf2txt_v11, example: drf2txt.exe -t -c LOW -n 0402_0400 480
-print('Loading data...') 
-t, data = np.loadtxt(args.filename, delimiter=args.delimiter, unpack=True) 	
+#t, data = np.loadtxt(args.filename, delimiter=args.delimiter, unpack=True)  	# slow, memory hog
+t, data = load_data(args.filename, args.delimiter)				# faster, smaller
 
 # filter / decimate first. Otherwise, it's hard to get a good cutoff with the FIR filter later
 if args.decimate != None:
 	print('Decimating by %d...' % (args.decimate)) 
-	t, data = decimate_nodelay(t, data, args.decimate, decimation_order)	 
+	t, data = decimate_nodelay(t, data, args.decimate, args.decimation_order)	 
 	fs = fs/args.decimate
 
 # scale data from ADC counts to real units, in m/sec
@@ -285,5 +318,6 @@ plt.ylim((-(i+1)*scale, scale))
 fig.savefig(args.outfile, dpi=dpi)
 
 # save file as WAV so we can listen to it
-wavfile.write('output.wav', 8000, 0.95*data/data_max)	# 0.95 is largest amplitude
+#wavfile.write('output.wav', 8000, 0.95*data/data_max)	# 0.95 is largest amplitude
+wavfile.write('output.wav', 16000, 0.95*data/data_max)	# 0.95 is largest amplitude
 
