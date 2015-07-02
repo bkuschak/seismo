@@ -2,6 +2,7 @@
 
 #ifdef WIN32
 #include <process.h>
+#include <winsock2.h>
 #endif
 
 #include <stdio.h>
@@ -11,6 +12,7 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 #include <mem_circ_queue.h>
 #include <socket_ew.h>
@@ -18,17 +20,23 @@
 #include <transport.h>
 #include <kom.h>
 
+#include "platform.h"
+
 #define TIME_REF_NOT_LOCKED		0
 #define TIME_REF_WAS_LOCKED		1
 #define TIME_REF_LOCKED			2
 
-#define THREAD_STACK			16384
-#define MAX_CONNECT_USERS		16
+//#define THREAD_STACK			16384
+#define THREAD_STACK			33*1024
+#define MAX_CONNECT_USERS		8			// memory allocated for each
 #define MAX_CHAN_LIST			64
 
 #define MESSAGE_LEN				120
 #define MAX_MESSAGES			10
 #define MAX_RPT_STR_LEN			4096
+
+#define MAX_QUEUE_ELEM_SIZE     16384				// doesn't need to be this big
+#define MAX_QUEUE_LEN           32
 
 #ifndef WIN32
 #define BYTE					unsigned char
@@ -72,13 +80,15 @@ typedef struct {
 	int exitThread;
 	int exitAck;
 	int recvPackets;
-	UINT totalRecvPackets;
+	UINT totalSentPackets;
 	int connecting;
 	int connected;
 	int restart;
 	int boardType;
 	int noDataReport;
 	SOCKET sock;
+	char ipaddr[ 20 ];
+	unsigned port;
 	unsigned tidReceive; 
 	time_t updateTime;
 	time_t connectTime;
@@ -86,6 +96,8 @@ typedef struct {
 	char settings[ 256 ];
 	char who[ 64 ];
 	void *pCI;
+	QUEUE q;		// each client needs their own output queue
+	SEMAPHORE q_sem;	// to allow blocking read of queue
 } UserInfo;
 
 typedef struct  {

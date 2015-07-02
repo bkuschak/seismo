@@ -5,7 +5,6 @@
 
 #include "Ew2Ws.h"
 
-struct sockaddr_in saddr;   // Socket address structure
 
 #ifdef WIN32
 COORD coordSize;
@@ -18,7 +17,7 @@ HANDLE hStdout = 0;
 
 extern MSG_LOGO logo, waveLogo;
 extern QUEUE tbQ, msgQ;
-extern mutex_t tbMx, msgMx, lsMx, rsMx;
+extern mutex_t msgMx, lsMx, rsMx, userMx;
 extern char messages[ MAX_MESSAGES ][ MESSAGE_LEN ];
 extern int numberMessages;
 
@@ -175,6 +174,7 @@ BYTE CalcCRC( BYTE *cp, int cnt )
 	return(crc);
 }
 
+#if 0
 int InitSocket()
 {
 	struct hostent *hp;
@@ -198,6 +198,7 @@ int InitSocket()
 	}
 	return TRUE;
 }
+#endif
 
 void LogWrite( char *type, char *pszFormat, ...)
 {
@@ -352,6 +353,8 @@ void AddFmtMessage( char *pszFormat, ... )
 	if( strlen( buff ) >= (MESSAGE_LEN-1) )
 		buff[ MESSAGE_LEN-1] = 0;
 
+	RequestSpecificMutex(&msgMx);
+
 	if( numberMessages )  {
 		for( i = numberMessages; i != 0; i-- )
 			strcpy(messages[i], messages[i-1] );
@@ -359,6 +362,8 @@ void AddFmtMessage( char *pszFormat, ... )
 	strcpy( messages[0], buff );
 	if( numberMessages < (MAX_MESSAGES-1) )
 		++numberMessages;
+
+	ReleaseSpecificMutex(&msgMx);
 }
 
 void MakeDiffTimeStr( char *to, time_t tm )
@@ -381,6 +386,7 @@ void MakeDiffTimeStr( char *to, time_t tm )
 		sprintf(to, "%02d:%02d:%02d", hour, min, sec);
 }
 
+
 void MakeReportString()
 {
 	int i, cnt = 0;
@@ -392,37 +398,47 @@ void MakeReportString()
 		
 	if( !ConsoleDisplay )
 		AddFmtStr( "-----------------------------------\n" );
-	AddFmtStr( "           WinSDR to Earthworm Status\n\n");
+	AddFmtStr( "           Earthworm to WinSDR Status\n\n");
 	
-	AddFmtStr( "Active Users: %d\n", activeUsers );
+	RequestSpecificMutex(&userMx);
+	AddFmtStr( "Active Users: %d of %u\n", activeUsers, MAX_CONNECT_USERS );
 		
-	if( activeUsers )  {
-		pUI = &userInfo[ 0 ];	
-		MakeUserStr( pUI );
+	for( i=0; i<MAX_CONNECT_USERS; i++ ) {
+		pUI = &userInfo[ i ];	
+		if( pUI->inUse )
+			MakeUserStr( pUI );
 	}
+	ReleaseSpecificMutex(&userMx);
 	
+	RequestSpecificMutex(&msgMx);
+
 	if( numberMessages )  {
 		AddFmtStr("\nMessages:\n");
 		for( i = 0; i != numberMessages; i++ )
 			AddFmtStr( messages[i] );
 	}
+
+	ReleaseSpecificMutex(&msgMx);
 }
 
 void MakeUserStr( UserInfo *pUI )
 {
 	char tmStr[ 64 ];
-	time_t diff = pUI->updateTime - pUI->connectTime;
-	ConnectInfo *pCI;
-	int count = 0;
+	time_t diff = time(NULL) - pUI->connectTime;
 	
 	strcpy( tmStr, "-----");
 	if( pUI->updateTime && pUI->connectTime && ( diff > 0 ) )
 		MakeDiffTimeStr( tmStr, diff );
+
+	AddFmtStr( "    User: %16s:%u  Packets: %6u  ConnectTime: %6s\n",
+		pUI->ipaddr, pUI->port, pUI->totalSentPackets, tmStr );
+#if 0
 	pCI = pUI->pCI;
 	if( pCI )
 		count = pCI->connectCount;
 	AddFmtStr( "    User: %s Packets: %u ConnectTime: %s ConnectCount: %d\n", 
-		pUI->who, pUI->totalRecvPackets, tmStr, count );
+		pUI->who, pUI->totalSentPackets, tmStr, count );
+#endif
 }
 
 void ClearUserData()
@@ -430,30 +446,16 @@ void ClearUserData()
 	int i, cnt = 0;
 	UserInfo *pUI;
 	
+	RequestSpecificMutex(&userMx);
 	for( i = 0; i != MAX_CONNECT_USERS; i++ )  {
 		pUI = &userInfo[ i ];	
 		if( !pUI->inUse )
 			continue;
-		pUI->totalRecvPackets = 0;
+		pUI->totalSentPackets = 0;
 		if( ++cnt == activeUsers )
 			break;
 	}
-}
-
-void CheckUsers( ConnectInfo *pCI, time_t now )
-{
-	time_t diff;
-	
-	if( !pCI->pUI )  {
-		LogWrite( "", "CheckUser %s No pUI ptr\n", pCI->who );
-		return;
-	}
-	
-	diff = now - pCI->pUI->updateTime;
-	if( diff >= NoDataWaitTime && !pCI->pUI->noDataReport )  {
-		ReportError( 2, "%s No Data Timeout", pCI->who );
-		pCI->pUI->noDataReport = TRUE;
-	}
+	ReleaseSpecificMutex(&userMx);
 }
 
 void InitPacker( BYTE *buffer, int channels, int numSamples, BOOL type24Bit )

@@ -1,0 +1,14 @@
+This code originally came from Larry Cochrane, from
+http://www.seismicnet.com/software/ew2ws.zip on 07/02/2015
+
+I made the following modifications:
+
+- Ew2Ws now supports multiple WinSDR clients connected to it simultaneously.
+- Fix dropped connections if WinSDR has ACK enabled
+- Better debug and status reporting
+- Removed obsolete and unused code and config file options
+
+Tested against WinSDR 4.7.6 beta1 32 bit and Earthworm 7.7 on a BeagleBone Black.
+
+Brian Kuschak <bkuschak@yahoo.com>
+

@@ -15,11 +15,11 @@ int Port;					// Port to use when connection to WinSDR
 int	ChanRate;			  	// Rate in samples per second per channel
 long InKey;					// Key to ring where mux data will live
 int HeartbeatInt;		 	// Heartbeat interval in seconds
-int SocketTimeout = 60000;	// Time in milliseconds
-int NoDataWaitTime = 45;	// Time to wait for no data. If no data reset recv thread. In seconds.
-int RestartWaitTime = 60;	// Time to wait between reconnects. In seconds.
+//int SocketTimeout = 60000;	// Time in milliseconds
+//int NoDataWaitTime = 45;	// Time to wait for no data. If no data reset recv thread. In seconds.
+//int RestartWaitTime = 60;	// Time to wait between reconnects. In seconds.
 int Debug = 0;				// If found print debug info
-int SendAck = 0;			// If true send ack packet after x received packets
+//int SendAck = 0;			// If true send ack packet after x received packets
 int Nchans = 0;			 	// Number of channels in SCNL list below
 SCNL ChanList[MAX_CHAN_LIST];	// Array to fill with SCNL values
 int ConsoleDisplay;			// Windows Only, if 1 use console functions like SetPos()
@@ -190,17 +190,20 @@ int GetConfig( char *configfile )
 				init[4] = 1;
 			}
 			/* Option parameters */
+#if 0	//bk
 			else if ( k_its( "SocketTimeout" ) )
 				SocketTimeout = k_int() * 1000;
 			else if ( k_its( "NoDataWaitTime" ) )
 				NoDataWaitTime = k_int();
 			else if ( k_its( "RestartWaitTime" ) )
 				RestartWaitTime = k_int();
+#endif
 			else if ( k_its( "Debug" ) )
 				Debug = k_int();
+#if 0	//bk
 			else if ( k_its( "SendAck" ) )
 				SendAck = k_int();
-				
+#endif
 			else if ( k_its( "ConsoleDisplay" ))  {
 				ConsoleDisplay = k_int();
 			}
@@ -268,11 +271,11 @@ void LogConfig( void )
 	logit( "", "Port:            %d\n", Port );
 	logit( "", "InKey:           %d\n", InKey );
 	logit( "", "HeartbeatInt:    %d\n", HeartbeatInt );
-	logit( "", "RestartWaitTime: %d\n", RestartWaitTime );
-	logit( "", "NoDataWaitTime:  %d\n", NoDataWaitTime );
-	logit( "", "SocketTimeout:   %d\n", SocketTimeout );
+	//logit( "", "RestartWaitTime: %d\n", RestartWaitTime );
+	//logit( "", "NoDataWaitTime:  %d\n", NoDataWaitTime );
+	//logit( "", "SocketTimeout:   %d\n", SocketTimeout );
 	logit( "", "Debug:           %d\n", Debug );
-	logit( "", "SendAck:         %d\n", SendAck );
+	//logit( "", "SendAck:         %d\n", SendAck );
 	
 	logit( "", "ConsoleDisplay:  %d\n", ConsoleDisplay );
 	logit( "", "ControlCExit:    %d\n", ControlCExit );
