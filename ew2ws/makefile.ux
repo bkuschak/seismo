@@ -1,0 +1,23 @@
+# makefile for Ew2Ws
+
+CFLAGS = $(GLOBALFLAGS)
+
+B = $(EW_HOME)/$(EW_VERSION)/bin
+L = $(EW_HOME)/$(EW_VERSION)/lib
+
+O = Ew2Ws.o Ew2WsUtils.o getconfig.o 
+J = $L/logit.o $L/getutil.o $L/time_ew.o $L/kom.o $L/transport.o $L/sleep_ew.o $L/socket_ew.o\
+ $L/socket_ew_common.o $L/threads_ew.o $L/mem_circ_queue.o $L/sema_ew.o
+
+all: ew2ws
+
+ew2ws: $(O)
+	$(CC) $(CFLAGS) -o $B/ew2ws $(O) $(J) -L. -lutil -lm -lpthread -lstdc++
+
+clean: FORCE
+	rm -f a.out core *.o *.obj *% *~
+
+clean_bin: FORCE
+	rm -f $B/ew2ws
+
+FORCE:

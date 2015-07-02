@@ -1,0 +1,50 @@
+<HTML><HEAD>
+<TITLE>Earthworm Modules: WinSDR to Earthworm (ws2ew.exe) commands</TITLE>
+</HEAD>
+
+<BODY TEXT="#000000" BGCOLOR="#FADFAF" LINK="#0000EE" VLINK="#551A8B" ALINK="#FF0000">
+<CENTER><H1> WinSDR to Earthworm for EW Version 7.x Configuration File</H1> 
+<I><P>Updated April 15, 2012 by Larry Cochrane</P></I></CENTER>
+<P align="left">Below is a typical ws2ew.d configuration file. This file should
+be located in the \earthworm\run_working\params directory. The ModuleId must be added to
+the earthworm.d file also located in this directory.</P>
+<PRE>#
+#                    CONFIGURATION FILE FOR WS2EW
+#                    -----------------------------
+ModuleId         MOD_WS2EW_A    # Module id of this instance of Ws2Ew
+OutRing          WAVE_RING      # Transport ring to write waveforms to
+Host             10.0.0.10      # Host name or IP address of the system running WinSDR
+                                # This parameter is not used in the Listen mode
+Port             16064          # Port number to use when connecting to WinSDR
+                                # or listening for WinSDR connections 
+HeartbeatInt     15             # Heartbeat interval in seconds
+AdcDataSize      2              # ADC trace buffer data size in bytes. Can be AUTO, 2 or 4 bytes
+                                # AUTO = 2 bytes if digitizer is 16 bits, 4 bytes if 24 bit digitizer
+#
+#                        OPTION PARAMETERS
+ListenMode       0              # If 1 listen for connections on port number specified above
+SocketTimeout    60             # Socket timeout in seconds (default = 60)
+RestartWaitTime  60             # Seconds to wait between reconnects (default = 60)
+NoDataWaitTime   45             # Seconds to wait before resetting connection
+SendAck          15             # Number of receive packets before sending ACK packet, 0 = don't send ACK
+Debug            1              # Display debug information
+#
+ConsoleDisplay   0              # Windows Only; if 1 use console functions to redisplay status
+ControlCExit     0              # If 1 exit on sigint control-c event
+RefreshTime      60             # Auto Status Display Refresh Time in seconds, 0 = no status display
+CheckStdin       1              # Windows Only; if 1 check for user input using kbhit() and then getch()
+                                # to receive commands from the user. Currently the 'c' key
+                                # clears the packet counter. All other input will redisplay the status information.
+#
+#     SCNL (Station/Component/Network/Location) for each channel configured in WinSDR to send out data
+#          over the TCP/IP connection. 
+#      Station Comp Net Loc    Send to Earthworm
+#      ------- ---- --- ---    --------
+Chan   CHAN1   BHZ  PN  01       YES
+Chan   CHAN2   BHN  PN  02       YES
+Chan   CHAN3   BHE  PN  03       YES
+</PRE>
+<hr>
+<PRE><CENTER><A HREF="../ovr/Ws2Ew_ovr.html">WinSDR to Earthworm Overview</A></CENTER></PRE>
+</BODY>
+</HTML>
