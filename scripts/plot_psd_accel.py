@@ -1,4 +1,5 @@
-# Plot PSD of the YUMA outputs
+# Plot PSD of the YUMA outputs.
+# Both velocity and acceleration plots.
 # Brian Kuschak <bkuschak@yahoo.com> 4/3/2015
 #
 import numpy as np
@@ -11,10 +12,11 @@ import matplotlib.mlab as mlb
 # Read in data from file here
 # two columns, time, data.
 # generated using Larry's drf2txt_v11: drf2txt.exe -t -c LOW -n 0402_0400 480
-#data_low = np.loadtxt("040215_040000.low.txt",delimiter=",") #unfiltered night
-#data_low = np.loadtxt("040215_130000.low.txt",delimiter=",") #unfiltered day
+data_low = np.loadtxt("040215_040000.low.txt",delimiter=",") #unfiltered night 30 Hz
+#data_low = np.loadtxt("040215_130000.low.txt",delimiter=",") #unfiltered day 30 Hz
 # drf2txt  -P "/Volumes/C/Program Files/WinSDR" -R "/Volumes/C/Program Files/WinSDR/data" -c CF -T -n -o adc_noise_ch1_shorted -s 0515_171500 120
-data_low = np.loadtxt("adc_noise_ch1_shorted",delimiter=" ") # unfiltered ADC noise
+#data_low = np.loadtxt("adc_noise_ch1_shorted",delimiter=" ") # unfiltered ADC noise
+
 ch_low = data_low[:,1]	# 2nd column is ADC samples
 fs = 30.0
 
@@ -139,7 +141,7 @@ x = sy.linspace(1/fs, len(ch_low)/fs, num=len(ch_low))
 ch_low = ch_low * 1.87e-9	# 1.87nm/s/count
 
 # get the velocity PSD first
-psd_vel, f_vel = plt.mlab.psd(ch_low, Fs=fs, detrend=mlb.detrend_mean, NFFT=512*1024)
+psd_vel, f_vel = plt.mlab.psd(ch_low, Fs=fs, detrend=mlb.detrend_mean, NFFT=32*1024)
 
 # convert velocity to acceleration by multiplying point by point with frequencies
 # (multiplication by j omega in freq domain is differentiation, PSD is squared)
