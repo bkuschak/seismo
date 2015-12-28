@@ -139,7 +139,7 @@ x = sy.linspace(1/fs, len(ch_low)/fs, num=len(ch_low))
 ch_low = ch_low * 1.87e-9	# 1.87nm/s/count
 
 # get the velocity PSD first
-psd_vel, f_vel = plt.mlab.psd(ch_low, Fs=fs, detrend=mlb.detrend_mean, NFFT=32*1024)
+psd_vel, f_vel = plt.mlab.psd(ch_low, Fs=fs, detrend=mlb.detrend_mean, NFFT=512*1024)
 
 # convert velocity to acceleration by multiplying point by point with frequencies
 # (multiplication by j omega in freq domain is differentiation, PSD is squared)
