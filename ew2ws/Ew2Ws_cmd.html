@@ -1,0 +1,43 @@
+<HTML><HEAD>
+<TITLE>Earthworm Modules: WinSDR to Earthworm (ew2ws.exe) commands</TITLE>
+</HEAD>
+
+<BODY TEXT="#000000" BGCOLOR="#FADFAF" LINK="#0000EE" VLINK="#551A8B" ALINK="#FF0000">
+<CENTER><H1> Earthworm to WinSDR for EW Version 7.x Configuration File</H1> 
+<I><P>Updated July 02, 2015 by Brian Kuschak bkuschak@yahoo.com</P></I></CENTER>
+<P align="left">Below is a typical ew2ws.d configuration file. This file should
+be located in the \earthworm\run_working\params directory. The ModuleId must be added to
+the earthworm.d file also located in this directory.</P>
+<PRE>#
+#                    CONFIGURATION FILE FOR EW2WS
+#                    -----------------------------
+ModuleId         MOD_EW2WS_A    # Module id of this instance of Ws2Ew
+OutRing          MUX_DATA_RING  # Transport ring to read multiplexed data waveforms from
+Host             0.0.0.0        # Local address to listen on. 0.0.0.0 to listen on all interfaces.
+Port             4022           # Port number to listen on
+HeartbeatInt     15             # Heartbeat interval in seconds
+#
+#                        OPTION PARAMETERS
+Debug            0              # Set to 1 or higher for debug info
+MaxConnections   8              # Maximum concurrent WinSDR clients connected. Higher = more memory.
+#
+ConsoleDisplay   0              # Windows Only; if 1 use console functions to redisplay status
+ControlCExit     0              # If 1 exit on sigint control-c event
+RefreshTime      60             # Auto Status Display Refresh Time in seconds, 0 = no status display
+CheckStdin       1              # Windows Only; if 1 check for user input using kbhit() and then getch()
+                                # to receive commands from the user. Currently the 'c' key
+                                # clears the packet counter. All other input will redisplay the status information.
+#
+# SCNL (Station/Component/Network/Location) for each channel configured in PsnAdSend 
+# This should match the Chan lines in your PsnAdSend.d file
+#
+#     Stat  Comp Net Loc Bits Gain
+#     ----- ---- --- --- ---- ----
+Chan  LCGPZ  SHZ  PN  01   21   4
+Chan  LCGPE  SHE  PN  02   21   4
+Chan  LCGPN  SHN  PN  03   21   4
+</PRE>
+<hr>
+<PRE><CENTER><A HREF="../ovr/Ws2Ew_ovr.html">WinSDR to Earthworm Overview</A></CENTER></PRE>
+</BODY>
+</HTML>

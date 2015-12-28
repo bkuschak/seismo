@@ -1,0 +1,67 @@
+<HTML>
+<HEAD>
+<TITLE>Earthworm Modules: WinSDR to Earthworm overview</TITLE>
+<BODY TEXT="#000000" BGCOLOR="#FADFAF" LINK="#0000EE" VLINK="#551A8B" ALINK="#FF0000">
+<CENTER><H1>Earthworm Modules: <BR> WinSDR to Earthworm for EW Version 7.x Overview</H1>
+<i>Updated April 15 2012 by Larry Cochrane</i></CENTER>
+
+<P>WinSDR to Earthworm (Ws2Ew) is a way of receiving digitized data in
+real-time using TCP/IP from the Webtronics <a href="http://www.seismicnet.com/winsdr/">WinSDR</a>
+datalogger program. This module runs under Windows or Linux and imports demultiplexed data
+into one of the transport data
+rings.&nbsp;<P>To use this module WinSDR must be setup to act as a TCP/IP data server.
+The connection between WinSDR and Ws2Ew can be done in one of two ways. Either
+WinSDR or Ws2Ew can initiate the connection.&nbsp; Normally WinSDR would be
+configured to listen for connections from Ws2Ew or a WinSDR system configured in
+the client mode. In this configuration WinSDR would have the <i>Connect to
+Client at</i> checkbox turned off and Ws2Ew configuration file parameter
+ListenMode = 0. The other connection mode would be to have WinSDR connect to
+Ws2Ew. To use this mode check the WinSDR's <i>Connect to Client at</i> checkbox
+and enter the IP Address or host name of the system running Ws2Ew and in the
+Ws2Ew .d file set ListenMode to 1.<P>This module was built using Microsoft Visual C++
+8.0 and OpenSUSE 11.4.
+<h3>Addition Configuration File Information:</h3>
+<blockquote>
+  <p>Ws2Ew Version 2 has some additional configuration file parameters;&nbsp;</p>
+  <p>The <i>ConsoleDisplay</i> parameter is only used under Windows and controls
+  how Ws2Ew displays status information on the screen.&nbsp; If set to 1, the&nbsp;
+  program will clear the screen, reposition the cursor to the top of the window
+  and display the status information.&nbsp; When <i>ConsoleDisplay</i> = 0,
+  status information will be appended to the end of the screen buffer.</p>
+  <p>The <i>ControlCExit </i>parameter controls how the module handles console
+  event signals like Control-C. If the parameter = 1, Ws2Ew will exit, if 0, the
+  program will ignore Control-C keyboard input.</p>
+  <p>The <i>RefreshTime</i> parameter is used to automatically display the
+  module status on the screen. The number entered is in seconds. If the user
+  enters 0 (zero) for this parameter no status information will be displayed on
+  the screen.</p>
+  <p><i>CheckStdin </i>is another Windows only feature. If set to 1, the program
+  will pole the STDIN buffer using kbhit() for any user input. Currently only
+  the 'c' key is used to clear the packet received counter, all other input will
+  redisplay the module status information.</p>
+  <p>The Station/Component/Network/Location (SCNL) channel line format has been
+  changed and the need for Nchan has been removed. The number of channels that
+  the program will process is now controlled by how many SCNL channel lines are
+  found in the configuration file. Older versions of Ws2Ew required a index
+  parameter per Channel line, this is no longer needed. The new SCNL line format
+  looks like this:</p>
+  <blockquote>
+    <blockquote>
+      <p>Chan ADUB1 SHZ PN 01</p>
+    </blockquote>
+    <p>Where ADUB1 is the Station ID, SHZ is the Component name, PN is the
+    Network ID and 01 is the Location code. The Station ID can be 1 to 5
+    characters, the Component name is normally 3 characters and the Network and
+    Location codes are 2 characters.&nbsp;</p>
+  </blockquote>
+</blockquote>
+<h3>
+Data Time Stamping:</h3>
+<P>All data is time stamped at the WinSDR server side. WinSDR can use various methods
+to time stamp the data including GPS, WWV or the computer's system time.&nbsp;<P>See the link below for a list of
+commands used to control the WinSDR to Earthworm module.
+<hr>
+<p><CENTER><a HREF="../cmd/ws2ew_cmd.html">Ws2Ew Commands</CENTER>
+</a>
+</BODY>
+</HTML>
