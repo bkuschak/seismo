@@ -1,0 +1,14 @@
+* Time-varying capacitor
+* C is connected to nodes 1 and 2
+* Control voltage to nodes 3 and 4
+* C(t) = V(3,4)
+* Capacitance in farads is equal to control voltage in volts
+* taken from: http://www.ece.cmu.edu/~mems/pubs/pdfs/ucberkeley/phd_thesis/0053_fedder-1994.pdf
+* modified for LTSpice syntax
+*
+.subckt tvc 1 2 3 4
+e1 5 0 VALUE {v(1,2)*v(3,4)}
+c 6 0 1
+v1 5 6 dc 0
+f1 1 2 v1 1
+.ends tvc
