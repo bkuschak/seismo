@@ -65,6 +65,18 @@ Command Line Options:
         Displays program version.
     -t
         Saves the sample time offset from start time as the first column in the output file. 
+    
+    -T
+        Add sample time (UNIX time) to output file.
+	
+    -s 
+    	Use space-separated instead of comma-separated values
+    
+    -P	
+    	Override path to WinSDR root directory.
+	
+    -R
+	Override path to WinSDR daily record file directory.	
 	
 Output File Format:
 
