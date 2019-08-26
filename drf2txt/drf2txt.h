@@ -34,7 +34,7 @@
 // Header Flags
 #define HF_SDR24_DATA			0x2000000	// This bit will be set if SDR24 data
 	
-#define VERSION					"1.2"
+#define VERSION					"1.3"
 
 // Holds the channel information from the ini config files
 typedef struct  {

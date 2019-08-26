@@ -1,4 +1,8 @@
-/* drf2txt.cpp - Save data from a winsdr daily record file to a text file */
+/* drf2txt.cpp - Save data from a winsdr daily record file to a text file
+*
+* 08/28/15 Version 1.3 - Added PGA Gain to the header output section 
+*
+*/
 
 #include "drf2txt.h"
 
@@ -158,6 +162,7 @@ int SaveHeader( InfoBlockNew *blk, int channel )
 		fprintf( outFp, "Number of Samples: %d\n",  savedSamples );
 		fprintf( outFp, "SPS: %g\n", (double)hdrBlock.sampleRate / (double)saveNth );
 		fprintf( outFp, "A/D Converter Bits: %d\n", channelInfo[ channel ].adcBits );
+		fprintf( outFp, "PGA Gain: %g\n", channelInfo[ channel ].ampGain );
 		fprintf( outFp, "Data:\n" );
 	}
 	else  {	
