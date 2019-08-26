@@ -2,9 +2,14 @@
 
 #include "drf2txt.h"
 
+#if !defined(_WIN32) && !defined(_WIN64)
+#define _mkgmtime timegm
+#endif
+
 extern ChannelInfo channelInfo[ MAX_CHANNELS ];
 extern int numberOfChannels, systemNumber;
 extern char recordFilePath[ 256 ];
+extern char winSdrPath[ 256 ];
 extern time_t userStartTime;
 extern int secondsToSave, useLocalTime;
 extern HdrBlock hdrBlock;
@@ -203,10 +208,14 @@ int GetParamString( char *fileName, char *key, char *to )
 int GetChannelFileNames()
 {
 	char str[ 256 ], keyName[ 256 ];
+	char path[ 1024 ];	// should really do this dynamically
+	char chanpath[ 1024 ];	// should really do this dynamically
 	int err;
 		
+	snprintf(path, sizeof(path), "%s%s", winSdrPath, wsIniFile);
+
 	// first get the number of channels
-	if( !GetParamInt( wsIniFile, "NumberChannels=", &numberOfChannels ) )
+	if( !GetParamInt( path, "NumberChannels=", &numberOfChannels ) )
 		return 0;
 	if( numberOfChannels > MAX_CHANNELS || numberOfChannels < 1 )  {
 		printf("GetChannelFileNames: Number of channels error. Should be 1 to %d, is %d\n", 
@@ -224,10 +233,12 @@ int GetChannelFileNames()
 	err = 0;
 	for( int i = 0; i != numberOfChannels; i++ )  {
 		sprintf( keyName, "ChanFile%d=", i+1 );
-		if( !GetParamString( wsIniFile, keyName, channelInfo[i].iniFileName ) )
+		if( !GetParamString( path, keyName, channelInfo[i].iniFileName ) )
 			return 0;
 		
-		if( !GetParamString( channelInfo[i].iniFileName, "FileExtention=", channelInfo[i].channelName ) )		
+		snprintf(chanpath, sizeof(path), "%s%s", winSdrPath, channelInfo[i].iniFileName);
+
+		if( !GetParamString( chanpath, "FileExtention=", channelInfo[i].channelName ) )		
 			err = 1;
 
 //		printf("%d: Channel ID=%s\n", i+1, channelInfo[i].channelName );
@@ -241,19 +252,23 @@ int GetChannelFileNames()
 /* Read the channel ini file and parse several fields */
 int GetChannelInfo( ChannelInfo *ci )
 {
-	if( !GetParamInt( ci->iniFileName, "AdcBits=", &ci->adcBits ) )  {
+	char path[ 1024 ];	// should really do this dynamically
+		
+	snprintf(path, sizeof(path), "%s%s", winSdrPath, ci->iniFileName);
+
+	if( !GetParamInt( path, "AdcBits=", &ci->adcBits ) )  {
 		printf("GetChannelInfo: Can't find AdcBits in %s\n", ci->iniFileName );
 		return FALSE;
 	}
-	if( !GetParamDouble( ci->iniFileName, "SensorOutVolt=", &ci->sensorVolts ) )  {
+	if( !GetParamDouble( path, "SensorOutVolt=", &ci->sensorVolts ) )  {
 		printf("GetChannelInfo: Can't find SensorOutVolt in %s\n", ci->iniFileName );
 		return FALSE;
 	}
-	if( !GetParamDouble( ci->iniFileName, "ADInVolt=", &ci->maxInputVolts ) )  {
+	if( !GetParamDouble( path, "ADInVolt=", &ci->maxInputVolts ) )  {
 		printf("GetChannelInfo: Can't find ADInVolt in %s\n", ci->iniFileName );
 		return FALSE;
 	}
-	if( !GetParamDouble( ci->iniFileName, "AdcGain=", &ci->ampGain ) )  {
+	if( !GetParamDouble( path, "AdcGain=", &ci->ampGain ) )  {
 		printf("GetChannelInfo: Can't find AdcGain in %s\n", ci->iniFileName );
 		return FALSE;
 	}
@@ -265,15 +280,22 @@ int GetChannelInfo( ChannelInfo *ci )
 /* Read the main config file and channel ini files for information we need to create the output file */
 int ReadIniFiles()
 {
+	char path[ 1024 ];	// should really do this dynamically
+		
+	snprintf(path, sizeof(path), "%s%s", winSdrPath, wsIniFile);
+
 	if( !GetChannelFileNames() )  {		// Read the main config file to get the channels file names
 		printf("Error Reading %s file\n", wsIniFile );
 		return FALSE;
 	}
-	if( !GetParamString( wsIniFile, "RecordPath=", recordFilePath ) )  {
-		printf("Error Reading %s file, key RecordPath not found\n", wsIniFile );
-		return FALSE;
+	// allow command line override of record path
+	if(!strlen(recordFilePath)) {		
+		if( !GetParamString( path, "RecordPath=", recordFilePath ) )  {
+			printf("Error Reading %s file, key RecordPath not found\n", wsIniFile );
+			return FALSE;
+		}
 	}
-	if( !GetParamInt( wsIniFile, "SystemNumber=", &systemNumber ) )  {
+	if( !GetParamInt( path, "SystemNumber=", &systemNumber ) )  {
 		printf("Error Reading %s file, key SystemNumber not found\n", wsIniFile );
 		return FALSE;
 	}

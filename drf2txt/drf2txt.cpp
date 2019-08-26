@@ -2,12 +2,18 @@
 
 #include "drf2txt.h"
 
+#if !defined(_WIN32) && !defined(_WIN64)
+/* Use POSIX function */
+#define stricmp strcasecmp
+#endif
+
 /* Data from the channel ini files */
 ChannelInfo channelInfo[ MAX_CHANNELS ];
 int numberOfChannels;
 
 /* Data from the winsdr.ini file */
 char recordFilePath[ 256 ];
+char winSdrPath[ 256 ];
 int systemNumber;
 
 /* User input data */
@@ -17,6 +23,7 @@ int minutesToSave, samplesToSave, savedSamples;
 char saveChannel[ 128 ];
 int saveOneChannel = -1;
 int saveSampleTime = 0;
+int useSecondsFromEpoch = 0;
 
 /* Current input file info */
 FILE *inFp;
@@ -48,6 +55,9 @@ double sampleDelta;			// 1.0 / sample_rate
 double firstSampleTime;
 
 double sampleTmAcc;
+double epochOffset;			// seconds from the epoch
+
+const char *separator = ",";		// comma separated values by default
 
 int SaveSample( InfoBlockNew *blk, int channel, int data )
 {
@@ -67,18 +77,18 @@ int SaveSample( InfoBlockNew *blk, int channel, int data )
 		printf("Start Saving Data to %s\n", outFileName );
 		firstSampleTime = userStartTime;
 		MakeTimeStrDouble( tmStr, firstSampleTime );
-		sampleTmAcc = 0;
+		//sampleTmAcc = 0;
+		sampleTmAcc = epochOffset;		/* may be zero */
 		if( !noHeader )
 			SaveHeader( blk, channel );
 	}
 		
-	if( saveSampleTime && !channel )
-		fprintf( outFp, "%.3f,", sampleTmAcc );
-	
 	// check to see if the user is only saving one channel
 	if( saveOneChannel != -1 )  {
 		if( channel == saveOneChannel )  {
 			if( saveNth == 1 )  {
+				if( saveSampleTime )
+					fprintf( outFp, "%.3f%s", sampleTmAcc, separator );
 				fprintf( outFp, "%d\n", data );
 				++totalSaved;
 				if( samplesToSave )
@@ -89,6 +99,8 @@ int SaveSample( InfoBlockNew *blk, int channel, int data )
 				dataAvg[ channel ] += (double)data;
 				if( ++dataAvgCount[ channel ] >= saveNth )  {
 					ddata = dataAvg[ channel ] / (double)dataAvgCount[ channel ];
+					if( saveSampleTime )
+						fprintf( outFp, "%.3f%s", sampleTmAcc, separator );
 					fprintf( outFp, "%g\n", ddata );
 					dataAvgCount[ channel ] = 0;
 					dataAvg[ channel ] = 0.0;
@@ -102,10 +114,12 @@ int SaveSample( InfoBlockNew *blk, int channel, int data )
 	}
 	
 	if( saveNth == 1 )  {
+		if( saveSampleTime && !channel )
+			fprintf( outFp, "%.3f%s", sampleTmAcc, separator );
 		if( channel == (numberOfChannels-1) )
 			fprintf( outFp, "%d\n", data );
 		else
-			fprintf( outFp, "%d,", data );
+			fprintf( outFp, "%d%s", data, separator );
 		++totalSaved;
 		if( samplesToSave )
 			--samplesToSave;
@@ -115,10 +129,12 @@ int SaveSample( InfoBlockNew *blk, int channel, int data )
 	dataAvg[ channel ] += (double)data;
 	if( ++dataAvgCount[ channel ] >= saveNth )  {
 		ddata = dataAvg[ channel ] / (double)dataAvgCount[ channel ];
+		if( saveSampleTime && !channel )
+			fprintf( outFp, "%.3f%s", sampleTmAcc, separator );
 		if( channel == (numberOfChannels-1) )
 			fprintf( outFp, "%g\n", ddata );
 		else
-			fprintf( outFp, "%g,", ddata );
+			fprintf( outFp, "%g%s", ddata, separator );
 		dataAvgCount[ channel ] = 0;
 		dataAvg[ channel ] = 0.0;	
 		++totalSaved;
@@ -299,7 +315,8 @@ void MakeOutputFile()
 	int size, sts, charOrShortLen, index = 0, findStart = 1;
 	double start, end, diff;
 				
-	sampleTmAcc = 0.0;
+	//sampleTmAcc = 0.0;
+	sampleTmAcc = epochOffset;		/* may be zero */
 	savingDataFlag = 0;
 	memset( dataAvg, 0, sizeof( dataAvg ) );
 	memset( dataAvgCount, 0, sizeof( dataAvgCount ) );
@@ -560,9 +577,13 @@ void PrintUsage()
 	printf( "        -n              No header information\n" );
 	printf( "        -v              Display program version number\n" );
 	printf( "        -t              Add sample time offset to output file\n" );
+	printf( "        -T              Add sample time (UNIX time) to output file\n" );
+	printf( "        -s              Use space-separated instead of comma-separated values\n" );
+	printf( "        -P              Override path to WinSDR root directory\n" );
+	printf( "        -R              Override path to WinSDR daily record file directory\n" );
 }
 
-void main( int argc, char *argv[] )
+int main( int argc, char *argv[] )
 {
 	int argIdx = 1, found = 0, i;
 	
@@ -623,6 +644,7 @@ void main( int argc, char *argv[] )
 			++argIdx;
 			if( argc )  {
 				strcpy( wsIniFile, argv[ argIdx++ ] );
+				printf("Using wsIniFile: %s\n", wsIniFile);
 				--argc;
 			}
 			continue;
@@ -662,6 +684,42 @@ void main( int argc, char *argv[] )
 				--argc;
 			++argIdx;
 			saveSampleTime = 1;			
+		}
+		else if( !strcmp( argv[ argIdx ], "-T") )  {
+			if( argc )
+				--argc;
+			++argIdx;
+			saveSampleTime = 1;			
+			useSecondsFromEpoch = 1;			
+		}
+		else if( !strcmp( argv[ argIdx ], "-s") )  {
+			if( argc )
+				--argc;
+			++argIdx;
+			separator = " ";
+		}
+		else if( !strcmp( argv[ argIdx ], "-P") )  {
+			if( argc )
+				--argc;
+			++argIdx;
+			if( argc )  {
+				// ensure trailing slash
+				snprintf( winSdrPath, sizeof(winSdrPath), "%s/", argv[ argIdx++ ] );
+				printf("Using WinSDR path: %s\n", winSdrPath);
+				--argc;
+			}
+		}
+		else if( !strcmp( argv[ argIdx ], "-R") )  {
+			if( argc )
+				--argc;
+			++argIdx;
+			if( argc )  {
+				// ensure trailing slash
+				snprintf( recordFilePath, sizeof(recordFilePath), "%s/", argv[ argIdx++ ] );
+				printf("Using Record File Path: %s\n", recordFilePath);
+				--argc;
+			}
+			continue;
 		}
 	}
 	
@@ -708,6 +766,11 @@ void main( int argc, char *argv[] )
 		exit( 1 );
 	}
 	dStartTime = (double)userStartTime;
+
+	if(useSecondsFromEpoch)
+		epochOffset = dStartTime;
+	else
+		epochOffset = 0;
 	
 	if( !dispHeader )
 		minutesToSave = atoi( argv[ argIdx ] );
@@ -715,4 +778,5 @@ void main( int argc, char *argv[] )
 	MakeOutputFile();
 	
 	exit( 0 );
+	return 0;	/* suppress warning */
 }

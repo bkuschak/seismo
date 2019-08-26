@@ -5,13 +5,23 @@
 #include <time.h>
 #include <string.h>
 #include <math.h>
-	
+
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <stdint.h>
+#define UINT64					uint64_t		// 64 bits
+#define INT64					int64_t			// 64 bits
+#define ULONG					uint32_t		// 32 bits
+#define UINT					uint32_t		// 32 bits
+#define WORD					uint16_t		// 16 bits
+#define BYTE					uint8_t			// 8 bits
+#else
 #define UINT64					unsigned long long	// 64 bits
 #define INT64					long long			// 64 bits
 #define ULONG					unsigned long		// 32 bits
 #define UINT					unsigned int		// 32 bits
 #define WORD					unsigned short		// 16 bits
 #define BYTE					unsigned char		// 8 bits
+#endif
 #define TRUE					1
 #define FALSE					0
 
