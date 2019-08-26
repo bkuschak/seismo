@@ -1,6 +1,7 @@
 /* drf2txt.cpp - Save data from a winsdr daily record file to a text file
 *
 * 08/28/15 Version 1.3 - Added PGA Gain to the header output section 
+* 11/16/16 Version 1.4 - Fixed problem with working with VolksMeter data files
 *
 */
 
@@ -401,7 +402,8 @@ void MakeOutputFile()
 	charOrShortLen = ((hdrBlock.numSamples * 60) / 8) + 1;
 	
 	/* Create a buffer large enough to hold one block of data */
-	if( hdrBlock.fileVersionFlags & HF_SDR24_DATA )  {	// test for SDR24 data
+	/* First test for SDR24 or VoltsMeter data */
+	if( ( hdrBlock.fileVersionFlags & HF_SDR24_DATA ) || ( hdrBlock.fileVersionFlags & HF_VM_DATA ) )  {
 		if(!(dataBlk = (BYTE *)malloc((sizeof(int) * 60 * hdrBlock.numSamples) + sizeof(InfoBlockNew))))  {
 			printf("Out of memory!\n");
 			if( inFp )  {
@@ -428,7 +430,8 @@ void MakeOutputFile()
 	/* Create a buffer to hold the decompressed data.  HdrBlock.numSamples is in 
 	   samples per second, so the 60 is to make the buffer large enough to hold
 	   one minutes worth of data. */
-	if( hdrBlock.fileVersionFlags & HF_SDR24_DATA )  {	// test for VolksMeter data
+	/* First test for SDR24 or VoltsMeter data */
+	if( ( hdrBlock.fileVersionFlags & HF_SDR24_DATA ) || ( hdrBlock.fileVersionFlags & HF_VM_DATA ) )  {
 		if(!(tmp24Data = (int *)malloc(sizeof(int) * 60 * hdrBlock.numSamples)))  {
 			printf("Out of memory!\n");
 			free(dataBlk);
@@ -527,7 +530,8 @@ void MakeOutputFile()
 			continue;
 			
 		/* Now unblock the data. Unblockers call SaveSample() above for each sample */
-		if(hdrBlock.fileVersionFlags & HF_SDR24_DATA)	{	// test for SDR24 data
+		/* First test for SDR24 or VolksMeter data */
+		if( ( hdrBlock.fileVersionFlags & HF_SDR24_DATA ) || ( hdrBlock.fileVersionFlags & HF_VM_DATA ) )	{
 			/* Decompress 24 bit data block into tmp24Data */
 			NormalizeSdrData( tmp24Data, dataBlk );
 			
@@ -553,7 +557,8 @@ void MakeOutputFile()
 	/* Done reading the file. Now do some clean up. */
 	free(dataBlk);
 	
-	if( hdrBlock.fileVersionFlags & HF_SDR24_DATA )  // test for VolksMeter or Sdr24 data
+	/* test for VolksMeter or Sdr24 data */
+	if( ( hdrBlock.fileVersionFlags & HF_SDR24_DATA ) || ( hdrBlock.fileVersionFlags & HF_VM_DATA ) )
 		free(tmp24Data);
 	else
 		free(tmpData);

@@ -2,7 +2,7 @@
 
 Drf2Txt ( Daily Record File Two Text) utility is a 32-Bit command line program used to
 save A/D data from a WinSDR daily record file to a text file. The program is compiled 
-to run on 32 or 64 bit version of Window (XP to Win8). Drf2Txt can be used on DRF 
+to run on 32 or 64 bit version of Window (XP to Win10). Drf2Txt can be used on DRF 
 (Daily Record File) created using PSN 16-Bit or 24-Bit A/D boards.
 
 Setup:
@@ -102,9 +102,10 @@ If the user specifies one channel to save using the -c option, or the user is
 recording just one channel, you will see one sample per line in the output file.
 
 Version 1.1:
+	Fixed a problem when requesting a start time around 00:00:00.
+	Added -v and -t options.
 
-Fixed a problem when requesting a start time around 00:00:00.
-
-Added -v and -t options.
+Version 1.4:
+	Fixed a problem with decoding VolksMeter Daily Record files.
 
 -End

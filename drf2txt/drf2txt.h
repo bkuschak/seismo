@@ -33,8 +33,9 @@
 
 // Header Flags
 #define HF_SDR24_DATA			0x2000000	// This bit will be set if SDR24 data
+#define HF_VM_DATA				0x4000000	// This bit will be set if VolksMeter data
 	
-#define VERSION					"1.3"
+#define VERSION					"1.4"
 
 // Holds the channel information from the ini config files
 typedef struct  {
