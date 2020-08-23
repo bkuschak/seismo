@@ -34,7 +34,7 @@ instId   INST_UNKNOWN		# bk - has to match in statmgr
 #    page or mail limit is exceeded, no further errors will be reported
 #    until the status manager is restarted.
 #
-tsec: 15  page: 0  mail: 0
+tsec: 60  page: 0  mail: 0
 #
 # The line below tells statmgr to restart the module if it stops working
 #
