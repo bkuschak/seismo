@@ -68,8 +68,7 @@ pagegroup   earthworm-ops
 #             ...
 #     MailServer  <serverNameN>
 #
-#MailServer  mailserver.your.org
-MailServer  smtp.comcast.net
+MailServer  mailserver.your.org
 
 #   Between 0 and 10 email recipients may be specified below.
 #   These lines are optional.
@@ -80,8 +79,7 @@ MailServer  smtp.comcast.net
 #             ...
 #     mail  <emailAddressN>
 #
-#mail  earthworm-ops@your.org
-mail  brian@groundmotion.org
+mail  earthworm-ops@your.org
 
 # Mail program to use, e.g /usr/ucb/Mail (not required)
 # If given, it must be a full pathname to a mail program
