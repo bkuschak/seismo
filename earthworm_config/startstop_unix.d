@@ -14,11 +14,12 @@
 # the issue.
 
 
- nRing               4
- Ring   WAVE_RING 2048
- Ring   PICK_RING 1024
- Ring   HYPO_RING 1024
- Ring   MUX_DATA_RING 2048    # Added for PsnAdSend
+ nRing               	4
+ #Ring   WAVE_RING 	2048
+ Ring   WAVE_RING 	4096
+ Ring   PICK_RING 	1024
+ Ring   HYPO_RING 	1024
+ Ring   MUX_DATA_RING 	2048    # Added for PsnAdSend
 #
  MyModuleId    MOD_STARTSTOP  # Module Id for this program
  HeartbeatInt  50             # Heartbeat interval in seconds
@@ -69,4 +70,24 @@
 # Send data to WinSDR application(s)
  Process          "ew2ws Ew2Ws.d"
  Class/Priority    OTHER 0
+
+# Send WAVE_RING channels to remote ringserver
+ Process          "ew2ringserver ew2ringserver.d"
+ Class/Priority    OTHER 0
+
+# Store WAVE_RING data to sdcard
+# Process          "wave_serverV wave_serverV.d"
+# Class/Priority    OTHER 0
 #
+# Send ring data to another EW system via their import_ack module
+#Process          "export_ack export_ack.d"
+#Class/Priority    OTHER 0
+#
+# Generate Helicorder GIF files
+#Process          "heli_ewII_launch.sh heli_ewII.d"
+#Class/Priority    OTHER 0
+#
+# Make sure the status messages written to MUX_DATA_RING get to the WAVE_RING
+# that is monitored by statmgr
+Process          "copystatus MUX_DATA_RING WAVE_RING"
+Class/Priority    OTHER 0

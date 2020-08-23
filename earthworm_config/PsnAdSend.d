@@ -2,10 +2,12 @@
 #                    --------------------------------------------
 #
 ModuleId           MOD_PSNADSEND_A	# Module id of this instance of PsnAdSend
-OutRing            WAVE_RING      	# Transport ring to write waveforms to
-MuxDataRing	   MUX_DATA_RING	# Used to send raw A/D data to a ring. Comment out or set to 0 if not used
+OutRing            WAVE_RING      	# Transport ring to write waveforms to (After derived chan, offset, and filtering). 
+					# Note, this OutRing cannot be used by Ew2Ws.
+MuxDataRing	   MUX_DATA_RING	# Used to send raw A/D data to a ring. Comment out or set to 0 if not used 
+					# This is the one that Ew2Ws uses (doesn't not include derived chan, offset, filter)
 
-Debug              1                    # Currently enables time reference debugging
+Debug              0                    # Currently enables time reference debugging
 
 # For Windows use port number
 #CommPortTcpHost    1              	# Comm Port Number for Windows
@@ -38,7 +40,7 @@ TimeOffset         0              	# Time Reference offset in milliseconds
 UpdateSysClock     1              	# 1 = PC time updated with AD board time
 HighToLowPPS       0              	# 1 = PPS Signal direction is High to Low
 NoPPSLedStatus     1			# 1 = Disable 1PPS LED blinking
-LogMessages        1              	# 1 = Log messages from DLL & ADC to log file
+LogMessages        0              	# 1 = Log messages from DLL & ADC to log file
 NoSendBadTime      0			# 1 = Only send packets with good GPS lock
 ExitOnTimeout	   0			# 1 = Exit if timeout error
 
@@ -68,6 +70,7 @@ TimeRefType      GARMIN			# One of the types above	 winsdr crash
 #TimeFileName     c:\tmp\PsnSendTime	# Path and root name of the time info file
 TimeFileName     /tmp/PsnSendTime      # use something like this for Linux
 #
+#
 # Filter params for Low-Pass and High-Pass Filters; Channel Number, Type, Cutoff Freq, Poles
 # Ch# is one of the channel numbers below. This includes any derived channels using the AddChan command
 # Type can be one of the following; LP = Low-Pass or HP = High-Pass
@@ -81,6 +84,7 @@ TimeFileName     /tmp/PsnSendTime      # use something like this for Linux
 #
 #Filter   2    LP    10     4
 #Filter   2    HP    1      4
+
 
 # Filter params for inverse (period extending) filter;
 # Sensor Frequency is in Hz 
@@ -106,30 +110,33 @@ TimeFileName     /tmp/PsnSendTime      # use something like this for Linux
 # Send = (Y)es will send the channel data to the Earthworm ring
 # DcOffset = Adds a DC Offset to the incoming data; Integer number in ADC counts
 
+# Note Ew2Ws currently ONLY accepts the raw samples. It will not read any derived channels,
+# or those with filtering or offset applied.  So WinSDR sees only CH1-CH4 and does its 
+# own filtering.
 #
-#     Stat  Comp Net Loc Bits Gain FltrDly Invert Send DcOffset
-#     ----- ---- --- --- ---- ---- ------- ------ ---- --------
-#Chan  CH1   CF1  PN  01   24   2      0      N      Y     0
-#Chan  CH2   BHZ  PN  02   24   2      0      N      Y     0
-#Chan  CH3   HI1  PN  03   24   2      0      N      Y     0
-#Chan  CH4   TMP  PN  04   24   1      0      N      Y     0
-Chan  BKFBC  CNF   PN  01   24   2      0      N      Y     0
-Chan  BKFBV  LHZ   PN  02   24   2      0      N      Y     0
-Chan  BKFBB  BHZ   PN  03   24   2      0      N      Y     0
-Chan  BKFBT  TMP   PN  04   24   1      0      N      Y     0
+# Chan* also go to OutRing.
+#
+# CH1: Vertical seismo. Unit 1. Low gain output.  Div/17
+# CH2: Vertical seismo. Unit 1. Centering force output. Div/17
+# CH3: Vertical seismo. Unit 2. Low gain output. Div/17
+# CH4: Vertical seismo. Unit 2. Temperature output. Div/1
 
-#Example for 4 Channel 24-Bit or Strong Motion Boards
-#Chan CH1   BHZ  PN  01   20   32     0      N      Y     0
-#Chan CH2   BHN  PN  02   20   32     0      N      Y     0
-#Chan CH3   BHE  PN  03   20   32     0      N      Y     0
-#Chan CH4   SHE  PN  04   20   8      0      N      Y     0
+#     Stat  Comp  Net Loc Bits Gain FltrDly Invert Send DcOffset
+#     ----- ----  --- --- ---- ---- ------- ------ ---- --------
+Chan  BKSVL  BHZ   AM  01   24   2      0      N      Y     0
+Chan  BKSVL  OEC   AM  01   24   1      0      N      Y     0
+Chan  BKSVL  BHZ   AM  02   24   2      0      N      Y     0
+Chan  BKSVL  OKS   AM  02   24   1      0      N      Y     0
 
-# The number of AddChan directives below will set how many additional channels to derive from the 
-# real ADC channels above
+# These will go to OutRing so they can be used by other Earthworm modules.
 #
 #       AdcCh Stat  Comp Net Loc Bits FltrDly Invert Send DcOffset
 #       ----- ----- ---- --- --- ---- ------- ------ ---- --------
-#AddChan  2    CH9   BHN  PN  01  16      0      N     Y     0
-#AddChan  7    CH10  AHE  PN  01  16      0      N     Y     0
-#
-# end of file
+#AddChan  1    BK1LL  BHZ  PN  01  24      0      N     Y     0
+#AddChan  1    BK1LM  BHZ  PN  01  24      0      N     Y     0
+
+#       Ch#  Type Cutoff Poles
+#       ---  ---- ------ -----
+#Filter   5    LP    0.07    4
+#Filter   5    HP    0.002   2
+
