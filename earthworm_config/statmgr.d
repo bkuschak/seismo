@@ -14,8 +14,8 @@ MyModuleId  MOD_STATMGR
 #   heartbeat and error messages.  Ring names are listed in file
 #   earthworm.h.  Example ->  RingName HYPO_RING
 #
-#RingName    HYPO_RING
-RingName    MUX_DATA_RING
+#RingName    MUX_DATA_RING
+RingName    WAVE_RING
 
 #   If CheckAllRings is set to 1 then ALL rings startstop currently
 #   knows about will be checked for status messages. The above
@@ -29,7 +29,7 @@ CheckAllRings	1
 
 # Debug is an optional flag (if not provided, defaults to 0 or off)
 # for now there are 2 levels above off: 1 and 2
-Debug 2
+#Debug 2
 
 #   <GetStatusFrom> lists the installations & modules whose heartbeats
 #   and error messages statmgr should grab from transport ring:
@@ -42,7 +42,7 @@ GetStatusFrom  INST_UNKNOWN   MOD_WILDCARD   # heartbeats & errors
 #             Set to 0 for no log file.
 #             Set to 2 for module log file but no logging to stderr/stdout
 #
-LogFile   0
+LogFile   1
 
 #   <heartBeatPageit> is the time in seconds between heartbeats
 #   sent to the pageit system.  The pageit system will report an error
@@ -79,7 +79,7 @@ MailServer  mailserver.your.org
 #             ...
 #     mail  <emailAddressN>
 #
-#mail  earthworm-ops@your.org
+mail  earthworm-ops@your.org
 
 # Mail program to use, e.g /usr/ucb/Mail (not required)
 # If given, it must be a full pathname to a mail program
@@ -127,14 +127,6 @@ Descriptor  statmgr.desc
 Descriptor  PsnAdSend.desc
 Descriptor  Ew2Ws.desc
 Descriptor  startstop.desc
-# Descriptor  adsend_a.desc        # Data source (adsend) on lardass
-# Descriptor  adsend_b.desc        # Data source (adsend) on honker
-# Descriptor  picker_a.desc        # Picker programs on redhot
-# Descriptor  picker_b.desc        # Picker programs on redhot
-# Descriptor  coaxtoring.desc
-# Descriptor  diskmgr.desc
-# Descriptor  binder.desc
-# Descriptor  eqproc.desc
-# Descriptor  pagerfeeder.desc
-# Descriptor  pick_client.desc
-# Descriptor  pick_server.desc
+#Descriptor  wave_serverV.desc
+#Descriptor  export_ack.desc
+#Descriptor  heli_ewII.desc
