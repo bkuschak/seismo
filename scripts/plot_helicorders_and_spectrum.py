@@ -14,6 +14,9 @@ import gc
 
 ################################################################################
 
+# For plot annotations.
+location = 'Bend, OR'
+
 # Server to query and data to plot.
 seedlink_server = 'archive.local'
 net = 'AM'
@@ -150,8 +153,8 @@ def FixupAnnotations(fig):
             yloc.append(y)
 
 # Make a helicorder plot and save to file.
-def Helicorder(stream, filename, starttime, duration, freqmin=0, freqmax=0, 
-        decimation=1, scale=None, events={}):
+def Helicorder(stream, filename, location, starttime, duration, freqmin=0,
+	freqmax=0, decimation=1, scale=None, events={}):
     print("Plotting helicorder ", filename)
     plt.rc('text', usetex=True)     # use LaTex tags
     st = stream.copy()
@@ -183,8 +186,8 @@ def Helicorder(stream, filename, starttime, duration, freqmin=0, freqmax=0,
         filter_str += '. '
 
     title = '%s' % st[0].id
-    subtitle = '%s UTC. Sunnyvale, CA. Yuma-2 v4.0. %sScale %s.' % \
-        (starttime.date, filter_str, scale_str)
+    subtitle = '%s. %s. Yuma-2 v4.0. %sScale %s.' % \
+        (starttime.date, location, filter_str, scale_str)
     titlestr = r'\begin{center}{\textbf{%s\\}}%s\end{center}' % \
         (title, subtitle)
 
@@ -302,8 +305,12 @@ now = UTCDateTime()
 starttime = now - 23*60*60
 starttime -= (starttime.second + 60*starttime.minute)
 endtime = now
+print("Plotting data from startime:", starttime, "to endtime:", endtime)
 
+print("Attempting to retrieve Seedlink data from:", seedlink_server)
+print(net, station, loc, chan)
 st = GetData(seedlink_server, net, station, loc, chan, starttime, endtime)
+print("Got some data")
 latest = max([tr.stats.endtime for tr in st.traces])
 print(st.__str__(extended=True))
 
@@ -325,11 +332,11 @@ plt.rcParams.update({'figure.max_open_warning': 0})
 # result in data delayed in time, even if sps remains integer. So don't 
 # decimate.
 Helicorder(st, MakeFilename(st, 'helicorder_teleseismic', 'png'), 
-    starttime, 86400, freqmin=0.005, freqmax=0.07, decimation=1, 
+    location, starttime, 86400, freqmin=0.005, freqmax=0.07, decimation=1, 
     scale=scale_teleseismic_helicorder_line)
 
 Helicorder(st, MakeFilename(st, 'helicorder_broadband', 'png'), 
-    starttime, 86400, freqmin=0.002, freqmax=25, decimation=1,
+    location, starttime, 86400, freqmin=0.002, freqmax=25, decimation=1,
     scale=scale_broadband_helicorder_line)
 
 # Get earthquake events during this time. Try multiple providers if necessary.
@@ -365,11 +372,11 @@ for e in teleseismic_events:
 # result in data delayed in time, even if sps remains integer. So don't 
 # decimate.
 Helicorder(st, MakeFilename(st, 'helicorder_broadband_annotated', 'png'), 
-    starttime, 86400, freqmin=0.002, freqmax=25, 
+    location, starttime, 86400, freqmin=0.002, freqmax=25, 
     scale=scale_broadband_helicorder_line, events=broadband_events)
 
 Helicorder(st, MakeFilename(st, 'helicorder_teleseismic_annotated', 'png'), 
-    starttime, 86400, freqmin=0.005, freqmax=0.07, decimation=1, 
+    location, starttime, 86400, freqmin=0.005, freqmax=0.07, decimation=1, 
     scale=scale_teleseismic_helicorder_line, events=teleseismic_events)
 
 # Spectrograms for the broadband and teleseismic events. 
