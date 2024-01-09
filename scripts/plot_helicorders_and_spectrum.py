@@ -86,6 +86,7 @@ def GetData(seedlink_addr, net, station, loc, chan, starttime, endtime):
                                   newest, endtime)
             print("Merging data...")
             st += st2
+    st.merge(method=0, fill_value=0)
     if len(st) > 0:
         print("Writing data to local file.")
         st.write('%s.%s.%s.%s.mseed' % (net, station, loc, chan), 
