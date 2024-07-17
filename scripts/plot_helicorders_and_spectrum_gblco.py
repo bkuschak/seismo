@@ -11,16 +11,18 @@ from obspy import UTCDateTime
 from obspy import read
 import matplotlib as plt
 import gc
+import os.path
 
 ################################################################################
 
 # For plot annotations.
-location = 'Bend, OR'
+location = 'Glass Buttes, OR'
 
 # Server to query and data to plot.
-seedlink_server = 'archive.local'
+seedlink_server = 'archive.local'       # tunneled to seiscape2
+seedlink_port = 18001               # tunneled to seiscape2
 net = 'AM'
-station = 'OMDBO'
+station = 'GBLCO'
 loc = '01'
 chan = 'BHZ'
 
@@ -28,22 +30,22 @@ chan = 'BHZ'
 age_limit = 120*60
 
 # Units per LSB. FIXME - Get this from dataless SEED if possible?
-units = 1.88e-9		# input data scale m/s per LSB.
+units = 1.77e-9     # input data scale m/s per LSB. For seiscape2 digitizer.
 
 # Helicorder scale on the plot.
-scale_broadband_helicorder_line = 30e-6         # m/s 
+scale_broadband_helicorder_line = 10e-6         # m/s 
 scale_teleseismic_helicorder_line = 300e-9      # m/s 
 scale_microseism_helicorder_line = 300e-9      # m/s 
 
 # Latitude and longitude of the our location
 # FIXME - get this from dataless SEED?
-site = (44.0464, -121.3151)
+site = (43.50999, -120.24793)
 
 ################################################################################
 
 # Get the station data from Seedlink server.
-def GetSeedlinkData(seedlink_addr, net, station, loc, chan, starttime, endtime):
-    client = SeedlinkClient(seedlink_addr)
+def GetSeedlinkData(seedlink_addr, seedlink_port, net, station, loc, chan, starttime, endtime):
+    client = SeedlinkClient(seedlink_addr, seedlink_port)
     st = client.get_waveforms(net, station, loc, chan, starttime, endtime)
     #st.write('%s.%s.%s.%s.mseed' % (net, station, loc, chan), format='MSEED')
     return st
@@ -57,11 +59,11 @@ def GetLocalData(net, station, loc, chan):
         return None
 
 # Use local data first, then retrieve any additional data needed from server.
-def GetData(seedlink_addr, net, station, loc, chan, starttime, endtime):
+def GetData(seedlink_addr, seedlink_port, net, station, loc, chan, starttime, endtime):
     st = GetLocalData(net, station, loc, chan)
     if st == None or len(st) == 0:
         print("Getting entire data from Seedlink server ", seedlink_addr)
-        st = GetSeedlinkData(seedlink_addr, net, station, loc, chan, starttime,
+        st = GetSeedlinkData(seedlink_addr, seedlink_port, net, station, loc, chan, starttime,
                 endtime)
     else:
         st.trim(starttime, endtime)
@@ -76,21 +78,21 @@ def GetData(seedlink_addr, net, station, loc, chan, starttime, endtime):
         if(oldest > starttime+1):
             print("Getting old data from", starttime, "to", oldest, 
                   "from Seedlink server", seedlink_addr)
-            st2 = GetSeedlinkData(seedlink_addr, net, station, loc, chan, 
+            st2 = GetSeedlinkData(seedlink_addr, seedlink_port, net, station, loc, chan, 
                                   starttime, oldest)
             print("Merging data...")
             st += st2
         if(newest < endtime):
             print("Getting latest data from", newest, "to", endtime, 
                   "from Seedlink server ", seedlink_addr)
-            st2 = GetSeedlinkData(seedlink_addr, net, station, loc, chan, 
+            st2 = GetSeedlinkData(seedlink_addr, seedlink_port, net, station, loc, chan, 
                                   newest, endtime)
             print("Merging data...")
             st += st2
     #st.merge(method=0, fill_value=0)
     print('Gaps before merge:')
     st.print_gaps()
-    st.merge(method=0, fill_value='interpolate')	# try to mitigate filter transients.
+    st.merge(method=0, fill_value='interpolate')    # try to mitigate filter transients.
     print('Gaps after merge:')
     st.print_gaps()
     if len(st) > 0:
@@ -161,7 +163,7 @@ def FixupAnnotations(fig):
 
 # Make a helicorder plot and save to file.
 def Helicorder(stream, filename, location, starttime, duration, freqmin=0,
-	freqmax=0, decimation=1, scale=None, events={}):
+    freqmax=0, decimation=1, scale=None, events={}):
     print("Plotting helicorder ", filename)
     plt.rc('text', usetex=True)     # use LaTex tags
     st = stream.copy()
@@ -199,14 +201,14 @@ def Helicorder(stream, filename, location, starttime, duration, freqmin=0,
         (title, subtitle)
 
     if(freqmin != 0 and freqmax != 0):
-	# Obspy docs say data should be detrended before filtering to avoid
-	# 'massive artifacts'.
+        # Obspy docs say data should be detrended before filtering to avoid
+        # 'massive artifacts'.
         st.detrend(type='demean')
         #st.detrend(type='simple')
 
         #st.filter("bandpass", freqmin=freqmin, freqmax=freqmax, corners=4, 
             #zerophase=True)
-	# Use 2nd order HP and 8th order LP to match filter done in WinSDR.
+        # Use 2nd order HP and 8th order LP to match filter done in WinSDR.
         st.filter("highpass", freq=freqmin, corners=2, zerophase=True)
         st.filter("lowpass", freq=freqmax, corners=8, zerophase=True)
     if(decimation > 1):
@@ -228,20 +230,30 @@ def Helicorder(stream, filename, location, starttime, duration, freqmin=0,
     FixupAnnotations(fig)
     fig.canvas.draw()
     fig.savefig(filename, bbox_inches='tight')
-    #fig.savefig(filename)
     plt.pyplot.clf()
     plt.pyplot.close(fig)
 
 # Make a spectrogram plot and save to file.
 def Spectrogram(stream, filename, starttime, duration, title=None, freqmin=0, 
         freqmax=0, decimation=1, per_lap=0.95, wlen=300.0, vline=None):
-    print("Plotting spectrogram ", filename)
+    print("Plotting spectrogram", filename, "from", starttime, "to", endtime)
     st = stream.copy()
     # Filter first, then slice, to minimize filter startup transient.
-    if(freqmin != 0 and freqmax != 0):
-        st.filter("bandpass", freqmin=freqmin, freqmax=freqmax, corners=4, 
-            zerophase=True)
+    # Use 2nd order HP and 8th order LP to match filter done in WinSDR.
+    if(freqmin != 0 or freqmax != 0):
+        # Obspy docs say data should be detrended before filtering to avoid
+        # 'massive artifacts'.
+        st.detrend(type='demean')
+        #st.detrend(type='simple')
+    if(freqmin != 0):
+        st.filter("highpass", freq=freqmin, corners=2, zerophase=True)
+    if(freqmax != 0):
+        st.filter("lowpass", freq=freqmax, corners=8, zerophase=True)
+    #if(freqmin != 0 and freqmax != 0):
+        #st.filter("bandpass", freqmin=freqmin, freqmax=freqmax, corners=4, 
+            #zerophase=True)
     st = st.slice(starttime=starttime, endtime=starttime+duration)
+    #st.slice(starttime=starttime, endtime=starttime+duration)
     if(st == None or len(st) == 0):
         return      # no data to plot
     if(decimation > 1):
@@ -259,11 +271,11 @@ def Spectrogram(stream, filename, starttime, duration, title=None, freqmin=0,
     # Don't plot to file immediately. Set the ylimit and title manually.
     # FIXME
     fig = st.spectrogram(log=False, per_lap=per_lap, wlen=wlen, dbscale=False, 
-    #fig = st.spectrogram(log=False, dbscale=False, 
         show=False)
     fig = fig[0]
     ax = fig.axes[0]
-    ax.set_ylim(0, freqmax)
+    if freqmax != 0:
+        ax.set_ylim(0, freqmax)
     ax.set_xlim(wlen/2, duration-wlen/2)
     ax.set_title(title_str, wrap=True)
     if vline != None:
@@ -279,11 +291,9 @@ def MakeFilename(st, basename, extension):
     return "%s_%s_%s_%s_%s.%s" % (basename, net, station, loc, chan, extension)
 
 # Use the earth model to estimate arrival times of events.
-# Returns (desc, time_p, time_s)[]
 def GetArrivalTimes(events):
     event_time = []
-    arrival_p = []
-    arrival_s = []
+    arrival_first = []
     arrival_rayleigh = []
     desc = []
     for e in events:
@@ -292,25 +302,21 @@ def GetArrivalTimes(events):
             continue
         model = TauPyModel()
         arrivals = model.get_travel_times_geo(e.origins[0].depth/1000, 
-                e.origins[0].latitude, e.origins[0].longitude, site[0], site[1], 
-                phase_list=["P", "S"])
+                e.origins[0].latitude, e.origins[0].longitude, site[0], site[1])
         (d, a, z) = gps2dist_azimuth(site[0], site[1], 
                         e.origins[0].latitude, e.origins[0].longitude)
-        #print("Arrivals for event ", e)
-        #print(arrivals)
-        #print("Phase " + arrivals[0].name + " at " + str(arrivals[0].time))
-        # There may be multiple P and multiple S for a single quake.
+        print("Arrivals for event", e.event_descriptions[0].text, e, e.origins[0].time)
+        print(arrivals)
+
         event_time.append(e.origins[0].time)
-        arrival_p.append(e.origins[0].time + 
-            min([0] or [a.time for a in arrivals if a.name == 'P']))
-        arrival_s.append(e.origins[0].time + 
-            min([0] or [a.time for a in arrivals if a.name == 'S']))
+        arrival_first.append(e.origins[0].time + arrivals[0].time)
+
         # Rayleigh travel time approxmately 4.0 km/sec
         arrival_rayleigh.append(e.origins[0].time + d/1000 / 4.0)
         desc.append('%s, %.1f %s, %.0f km away' % 
                 (e.event_descriptions[0].text, e.magnitudes[0].mag, 
                 e.magnitudes[0].magnitude_type, d/1000))
-    return zip(event_time, desc, arrival_p, arrival_s, arrival_rayleigh)
+    return zip(event_time, desc, arrival_first, arrival_rayleigh)
 
 ################################################################################
 
@@ -324,7 +330,7 @@ print("Plotting data from startime:", starttime, "to endtime:", endtime)
 
 print("Attempting to retrieve Seedlink data from:", seedlink_server)
 print(net, station, loc, chan)
-st = GetData(seedlink_server, net, station, loc, chan, starttime, endtime)
+st = GetData(seedlink_server, seedlink_port, net, station, loc, chan, starttime, endtime)
 print("Got some data")
 latest = max([tr.stats.endtime for tr in st.traces])
 print(st.__str__(extended=True))
@@ -347,7 +353,6 @@ plt.rcParams.update({'figure.max_open_warning': 0})
 # result in data delayed in time, even if sps remains integer. So don't 
 # decimate.
 Helicorder(st, MakeFilename(st, 'helicorder_teleseismic', 'png'), 
-    #location, starttime, 86400, freqmin=0.002, freqmax=0.07, decimation=1,
     location, starttime, 86400, freqmin=0.015, freqmax=0.07, decimation=1,
     scale=scale_teleseismic_helicorder_line)
 
@@ -368,14 +373,14 @@ print("All events:")
 print(all_events.__str__(print_all=True))
 
 # Filter quakes that we care about for the broadband plot:
-filt = [ (2.0, 10*1000), (3.0, 100*1000), (4.0, 500*1000), (5.0, 5000*1000), 
-        (6.0, 10000*1000), (7.0, float('inf')) ]
+filt = [ (2.0, 10*1000), (3.0, 100*1000), (4.0, 3000*1000), (5.0, 10000*1000), 
+        (6.0, 20000*1000), (7.0, float('inf')) ]
 broadband_events = FilterEvents(all_events, filt, site[0], site[1])
 for e in broadband_events:
     (d, a, z) = gps2dist_azimuth(site[0], site[1], e.origins[0].latitude, 
             e.origins[0].longitude)
-    print("Broadband: %s | Distance %.0f km, azimuth %d deg" % 
-        (e.short_str(), d/1000, a))
+    print("Broadband: %s | %s | Distance %.0f km, azimuth %d deg" % 
+        (e.short_str(), e.event_descriptions[0].text, d/1000, a))
 
 # Filter quakes that we care about for the teleseismic plot:
 filt = [ (4.0, 8000*1000), (4.5, 12000*1000), (5.0, 15000*1000), 
@@ -384,8 +389,8 @@ teleseismic_events = FilterEvents(all_events, filt, site[0], site[1])
 for e in teleseismic_events:
     (d, a, z) = gps2dist_azimuth(site[0], site[1], e.origins[0].latitude, 
             e.origins[0].longitude)
-    print("Teleseismic: %s | Distance %.0f km, azimuth %d deg" % 
-        (e.short_str(), d/1000, a))
+    print("Teleseismic: %s | %s | Distance %.0f km, azimuth %d deg" % 
+        (e.short_str(), e.event_descriptions[0].text, d/1000, a))
 
 # Plot the helicorder plots annotated with events.
 # Note: Decimation results in scaling error across each line. Larger factors
@@ -399,38 +404,53 @@ Helicorder(st, MakeFilename(st, 'helicorder_teleseismic_annotated', 'png'),
     location, starttime, 86400, freqmin=0.005, freqmax=0.07, decimation=1, 
     scale=scale_teleseismic_helicorder_line, events=teleseismic_events)
 
-# Spectrograms for the broadband and teleseismic events. 
-print("Broadband arrivals:")
-broadband_arrivals = GetArrivalTimes(broadband_events)
-for t,desc,p,s,r in broadband_arrivals:
-    print("P, S for event: " + str(p) + ", " + str(s));
-    # Only plot if we have enough data. Plot from 10 minutes before the p-wave
-    # to 'duration' seconds after.
-    duration = 1800
-    if (latest-p) >= duration:
-        timestr = str(p).replace(':', '_')
-        Spectrogram(st, MakeFilename(st, 'spectrum_broadband_%s' % timestr, 
-            'png'), p-600, duration+600, freqmin=0.002, freqmax=25, decimation=1, 
-            title=desc, vline=r-p-600)
-
-# Spectrograms for the teleseismic events. 
+# Spectrograms for the teleseismic events. This shows the surface waves.
 print("Teleseismic arrivals:")
 teleseismic_arrivals = GetArrivalTimes(teleseismic_events)
-for t,desc,p,s,r in teleseismic_arrivals:
-    print("P, S for event", desc, str(p) + ", " + str(s));
+for t,desc,f,r in teleseismic_arrivals:
+    print("First and Rayleigh arrivals for", t, "event", desc, str(f) + ", " + str(r));
     # Only plot if we have an hour's worth of data after the event. Plot from
-    # the p-wave arrival until 'duration' seconds after.
+    # the event until 'duration' seconds after.
     duration = 2*3600 
-    if (latest-p) >= 3600:
-        timestr = str(p).replace(':', '_')
-        Spectrogram(st, MakeFilename(st, 'spectrum_teleseismic_%s' % timestr, 'png'), p, duration,
-            freqmin=0.002, freqmax=0.09, decimation=500, title=desc, vline=r-p,
-            wlen=600, per_lap=0.999999)
+    start = t
+    end = t+duration
+    expected = r-start
+    if latest >= end:
+        timestr = str(start).replace(':', '_')
+        filename = MakeFilename(st, 'spectrum_teleseismic_%s' % timestr, 'png')
+        if not os.path.isfile(filename):
+            Spectrogram(st, filename, start, end-start, freqmin=0.01,
+                freqmax=0.09, decimation=600, title=desc, vline=expected, 
+                wlen=600, per_lap=0.999999)
+
+## FIXME broadband spectrograms aren't working - empty. Sometimes script is killed.
+## Spectrograms for the broadband and teleseismic events. 
+#print("Broadband arrivals:")
+#broadband_arrivals = GetArrivalTimes(broadband_events)
+#for t,desc,f,r in broadband_arrivals:
+#    print("First arrivals for event: " + str(f));
+#    # Only plot if we have enough data. Plot from 10 minutes before the first
+#    # phase to 'duration' seconds after.
+#    duration = 1800
+#    start = f-600
+#    end = f+duration
+#    expected = f-start
+#    if latest >= end:
+#        timestr = str(start).replace(':', '_')
+#        filename = MakeFilename(st, 'spectrum_broadband_%s' % timestr, 'png')
+#        if not os.path.isfile(filename):
+#            Spectrogram(st, filename, start, end-start, freqmin=0.01, freqmax=25,
+#                title=desc, vline=expected)
+#
 
 # Broadband spectrogram for entire day.
-Spectrogram(st, MakeFilename(st, 'spectrum_broadband_all_day', 'png'), 
-    starttime, endtime-starttime, freqmin=0.1, freqmax=25.0, decimation=2, 
-    title='All day', wlen=30.0, per_lap=0.5)
+filename = MakeFilename(st, 'spectrum_broadband_all_day', 'png')
+Spectrogram(st, filename, starttime, endtime-starttime, freqmin=0.1,
+	freqmax=25.0, decimation=2, title='All day', wlen=30.0, per_lap=0.5)
+
+filename = MakeFilename(st, 'spectrum_broadband_all_day_narrowband', 'png')
+Spectrogram(st, filename, starttime, endtime-starttime, freqmin=0.01,
+	freqmax=1.0, decimation=2, title='All day', wlen=30.0, per_lap=0.5)
 
 print("Done!")
 exit(0)
