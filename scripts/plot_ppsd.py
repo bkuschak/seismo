@@ -119,7 +119,7 @@ else:
 
 # Merge and trim the streams.
 st.merge()      # allow gaps
-st.trim(starttime=UTCDateTime(starttime), endtime=UTCDateTime(endtime))
+st.trim(starttime=UTCDateTime(starttime), endtime=UTCDateTime(endtime+timedelta(0.1)))
 print(st)
 if args.verbose:
     print("Data:", st[0].data)
@@ -133,7 +133,9 @@ inv = read_inventory(args.response_file)
 if args.verbose:
     print('inv:', inv[0][0][0].response)
 
-# By default, PPSD plots acceleration. To plot velocity, use 'hydrophone' method.
+# By default, PPSD plots acceleration. There doesn't seem to be a way to plot
+# velocity. 'hydrophone' handling plots the data as velocity but the NLNM/NHNM
+# lines are still plotted as acceleration.
 plt.rcParams['font.family'] = 'Helvetica'
 ppsd = PPSD(
     st[0].stats, 
@@ -141,18 +143,15 @@ ppsd = PPSD(
     period_step_octaves=1.0/40, 
     ppsd_length=int(args.segment_len),
     overlap=float(args.segment_overlap),
-    skip_on_gaps=True,
-    special_handling='hydrophone') # no differentiation after instrument correction
+    skip_on_gaps=False)
 ppsd.add(st)
 fig = ppsd.plot(
-    show=False, 
-    xaxis_frequency=True,
-    period_lim=(0.005, st[0].stats.sampling_rate/2))
+    show=False,
+    period_lim=(1.0/(st[0].stats.sampling_rate/2), 1.0/0.005))
 
 fig.set_size_inches(10,8)
 ax = fig.axes[0]
-ax.set_ylabel('Amplitude [$m^2/s^2/Hz$] [dB]')
-title = r"$\bf{%s}$" + "\n%s to %s  Velocity PPSD (%i/%i segments)"
+title = r"$\bf{%s}$" + "\n%s to %s  Acceleration PPSD (%i/%i segments)"
 title = title % (ppsd.id,
     ppsd.times_processed[0].date,
     ppsd.times_processed[-1].date,
