@@ -9,6 +9,7 @@ import numpy as np
 from obspy import read, read_inventory, Stream, UTCDateTime
 from obspy.io.xseed import Parser
 from obspy.signal import PPSD
+import os
 import pylab as pyl
 import scipy as sy
 import scipy.fftpack as syfp
@@ -64,6 +65,8 @@ parser.add_argument('--show', action='count', default=None,
     help='Show the plot interactively.')
 parser.add_argument('-v', '--verbose', action='count', 
     help='Increase verbosity.')
+parser.add_argument('--rotate', type=int, default=None,
+    help='Rotate output files and keep this number of old copies.')
 args = parser.parse_args()
 
 if args.verbose:
@@ -162,6 +165,27 @@ plt.draw()
 
 if args.show:
     plt.show()
+
+# Before writing the output file, rotate the existing files.
+if args.rotate:
+    # Rotate the old plots, keeping at most 'args.rotate' number of old copies.
+    for i in reversed(range(args.rotate)):
+        if i == args.rotate-1:
+            try:
+                os.remove('{}.{}'.format(args.outfile, i))
+            except Exception as e:
+                print(e)
+        elif i == 0:
+            try:
+                os.rename(args.outfile, '{}.{}'.format(args.outfile, i+1))
+            except Exception as e:
+                print(e)
+        else:
+            try:
+                os.rename('{}.{}'.format(args.outfile, i),
+                          '{}.{}'.format(args.outfile, i+1))
+            except Exception as e:
+                print(e)
 
 print('Writing output file:', outfile)
 plt.savefig(args.outfile, dpi=int(args.dpi), bbox_inches='tight')
