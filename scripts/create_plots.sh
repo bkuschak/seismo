@@ -32,6 +32,9 @@ if [ ! -f ./ppsd_AM_GBLCO_01_BHZ.png -o "$(find ./ppsd_AM_GBLCO_01_BHZ.png -mmin
         --rotate 10
 fi
 
+# Generate temperature plots.
+/usr/bin/python3 plot_daily_temperature.py
+
 # Copy the latest helicorder files to the server.
 # SSH was previously set up for certificate authentication.
 # webserver_host is an alias defined in ~/.ssh/config
@@ -48,6 +51,8 @@ SRCS+="helicorder_teleseismic_annotated_AM_OMDBO_01_BHZ.png "
 SRCS+="helicorder_teleseismic_annotated_AM_GBLCO_01_BHZ.png "
 SRCS+="ppsd_AM_OMDBO_01_BHZ.png "
 SRCS+="ppsd_AM_GBLCO_01_BHZ.png "
+SRCS+="daily_temperature_AM_OMDBO_01.png "
+SRCS+="daily_temperature_AM_GBLCO_01.png "
 scp ${SRCS} ${HOST}:${DEST}
 
 # Copy most recent spectrums to a staging directory. 
