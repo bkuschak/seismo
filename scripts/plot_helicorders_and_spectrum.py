@@ -427,10 +427,14 @@ for t,desc,p,s,r in teleseismic_arrivals:
             freqmin=0.002, freqmax=0.09, decimation=500, title=desc, vline=r-p,
             wlen=600, per_lap=0.999999)
 
-# Broadband spectrogram for entire day.
+# Spectrograms for entire day.
 Spectrogram(st, MakeFilename(st, 'spectrum_broadband_all_day', 'png'), 
     starttime, endtime-starttime, freqmin=0.1, freqmax=25.0, decimation=2, 
     title='All day', wlen=30.0, per_lap=0.5)
+
+Spectrogram(st, MakeFilename(st, 'spectrum_teleseismic_all_day', 'png'),
+    starttime, endtime-starttime, freqmin=0.005, freqmax=0.09, decimation=500,
+    title='All day', wlen=600.0, per_lap=0.50)
 
 print("Done!")
 exit(0)

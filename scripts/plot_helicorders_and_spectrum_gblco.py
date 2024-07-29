@@ -30,7 +30,8 @@ chan = 'BHZ'
 age_limit = 120*60
 
 # Units per LSB. FIXME - Get this from dataless SEED if possible?
-units = 1.77e-9     # input data scale m/s per LSB. For seiscape2 digitizer.
+#units = 1.77e-9     # input data scale m/s per LSB. For seiscape2 digitizer.
+units = 2.82e-9      # input data scale m/s per LSB. Unit #2 + seiscape2 digitizer.
 
 # Helicorder scale on the plot.
 scale_broadband_helicorder_line = 10e-6         # m/s 
@@ -443,10 +444,14 @@ for t,desc,f,r in teleseismic_arrivals:
 #                title=desc, vline=expected)
 #
 
-# Broadband spectrogram for entire day.
+# Spectrograms for entire day.
 filename = MakeFilename(st, 'spectrum_broadband_all_day', 'png')
 Spectrogram(st, filename, starttime, endtime-starttime, freqmin=0.1,
 	freqmax=25.0, decimation=2, title='All day', wlen=30.0, per_lap=0.5)
+
+filename = MakeFilename(st, 'spectrum_teleseismic_all_day', 'png')
+Spectrogram(st, filename, starttime, endtime-starttime, freqmin=0.005,
+	freqmax=0.09, decimation=600, title='All day', wlen=600, per_lap=0.5)
 
 filename = MakeFilename(st, 'spectrum_broadband_all_day_narrowband', 'png')
 Spectrogram(st, filename, starttime, endtime-starttime, freqmin=0.01,
