@@ -181,12 +181,13 @@ if args.deconvolve:
         if not got_resp:
             try:
                 print('Trying to read instrument response for {}.{}.{}.{} from IRIS.'.format(net, station, loc, chan))
-                inv += GetIrisResponse(net, station, loc, chan, starttime, endtime)
+                inv_iris = GetIrisResponse(net, station, loc, chan, starttime, endtime)
                 got_resp = True
                 print('Read instrument response for {}.{}.{}.{} from IRIS.'.format(net, station, loc, chan))
                 fname = '{}_{}.xml'.format(net, station)
-                inv.write(fname, format='STATIONXML')
+                inv_iris.write(fname, format='STATIONXML')
                 print('Wrote instrument response to local file:', fname)
+                inv += inv_iris
             except Exception as e:
                 print('While trying to getting response file from IRIS:', e)
 
