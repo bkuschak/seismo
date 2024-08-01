@@ -120,7 +120,7 @@ elif args.eventtime:
     earliest = min([a.time for a in arrivals])
 
     starttime = eventtime + earliest - args.before
-    endtime = starttime + earliest + args.after
+    endtime = eventtime + earliest + args.after
 
 else:
     print('Must specify either (--starttime and --endtime) or --eventtime.')
@@ -160,6 +160,7 @@ print('Streams:\n', st.__str__(extended=True))
 
 # Read the instrument response and deconvolve:
 inv = None
+deconvolved_str = ''
 if args.deconvolve:
     inv = Inventory()
     for c in args.channel:
@@ -194,18 +195,22 @@ if args.deconvolve:
     for s in st:
         try:
             print('Removing instrument response for', s.id, '...')
-            deconvolved = True
             s.remove_response(inventory=inv)
+            deconvolved = True
+            deconvolved_str = 'Response removed. '
         except Exception as e:
             print('Failed removing instrument response for', s.id)
 
 # Filter the data.
+filter_str = ''
 if args.highpass is not None:
     print('Applying high pass filter...')
     st.filter('highpass', freq=args.highpass, corners=4, zerophase=True)
+    filter_str = 'HP={:.2f} Hz. '.format(args.highpass)
 if args.lowpass is not None:
     print('Applying low pass filter...')
     st.filter('lowpass', freq=args.lowpass, corners=4, zerophase=True)
+    filter_str += 'LP={:.2f} Hz. '.format(args.lowpass)
 
 # Try to remove the filtering transients
 starttrim = 0
@@ -219,7 +224,6 @@ elif args.lowpass or args.highpass:
 if starttrim != 0 or endtrim != 0:
     print('Trimming the stream to remove filter transients')
     st.trim(starttime=starttime+starttrim, endtime=endtime-endtrim)
-
 
 # Plot
 print('Plotting streams as {}:\n'.format(outfile), st.__str__(extended=True))
@@ -235,7 +239,10 @@ if arrivals:
             ax.grid(which='major')
             #ax.xaxis.set_minor_locator(SecondLocator(range(0, 60, 10)))
             #ax.xaxis.set_major_locator(MinuteLocator(range(0, 60, 1)))
-    fig.suptitle(desc + '\nEvent time: ' + eventtime.datetime.isoformat())
+    title_str = desc + '\nEvent time: ' + eventtime.datetime.isoformat() + '. '
+    title_str += filter_str + deconvolved_str
+    #fig.suptitle(desc + '\nEvent time: ' + eventtime.datetime.isoformat())
+    fig.suptitle(title_str)
     ax.legend(loc='upper right')
 
 if deconvolved:
