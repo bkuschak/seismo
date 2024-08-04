@@ -7,6 +7,7 @@ import matplotlib.pylab as plt
 import matplotlib.mlab as mlb
 import numpy as np
 from obspy import read, read_inventory, Stream, UTCDateTime
+from obspy.clients.seedlink.basic_client import Client as SeedlinkClient
 from obspy.io.xseed import Parser
 from obspy.signal import PPSD
 import os
@@ -49,6 +50,8 @@ parser.add_argument('--path', dest='path', default=path,
 parser.add_argument('--respfile', dest='response_file', default=response_file, 
 	help='StationXML response definition file (default is {})'.
     format(response_file))
+parser.add_argument('--server', dest='server', default=None,
+    help='Use Seedlink server:port instead of a file')
 parser.add_argument('--infile', dest='infile', default=None,
 	help='MiniSEED input filename')
 parser.add_argument('--outfile', dest='outfile', default=outfile, 
@@ -106,19 +109,30 @@ else:
     print('Start time:', starttime)
     print('End time:  ', endtime)
 
-    st = Stream()
-    t = starttime
-    while t < (endtime + timedelta(days=1)):
-        year = t.timetuple().tm_year
-        doy = t.timetuple().tm_yday
-        fname = '{}/{}.{}.{}.mseed'.format(args.path, args.channel, year, doy)
-        print('Attempting to open file "{}"...'.format(fname))
-        try:
-            st += read(fname)
-        except Exception as e:
-            print(e)
-            print('Attempting to continue...')
-        t += timedelta(days=1)
+    if args.server:
+        print('Use Seedlink server:', args.server)
+        net, station, loc, chan = args.channel.split('.')
+        print('Attempting to retrieve {}.{}.{}.{}...'.format(net, station, loc, chan))
+        server, port = args.server.split(':')
+        client = SeedlinkClient(server, int(port))
+        st = client.get_waveforms(net, station, loc, chan, UTCDateTime(starttime), UTCDateTime(endtime))
+        # Write data to a local file
+        st.write('{}.{}.{}.{}.copy.mseed'.format(net, station, loc, chan))
+    else:
+        st = Stream()
+        t = starttime
+        while t < (endtime + timedelta(days=1)):
+            year = t.timetuple().tm_year
+            doy = t.timetuple().tm_yday
+
+            fname = '{}/{}.{}.{}.mseed'.format(args.path, args.channel, year, doy)
+            print('Attempting to open file "{}"...'.format(fname))
+            try:
+                st += read(fname)
+            except Exception as e:
+                print(e)
+                print('Attempting to continue...')
+            t += timedelta(days=1)
 
 # Merge and trim the streams.
 st.merge()      # allow gaps
@@ -187,7 +201,7 @@ if args.rotate:
             except Exception as e:
                 print(e)
 
-print('Writing output file:', outfile)
+print('Writing output file:', args.outfile)
 plt.savefig(args.outfile, dpi=int(args.dpi), bbox_inches='tight')
 plt.close()
 exit(0)
