@@ -19,7 +19,6 @@ import gc
 # Read the station data from a local file.
 def GetLocalData(net, station, loc, chan, year=0, doy=0):
     try:
-        #st = read('%s.%s.%s.%s.mseed' % (net, station, loc, chan))
         st = read('/data/seismometer_data/mseed/%s.%s.%s.%s.%d.%d.mseed' % (net, station, loc, chan, year, doy))
         return st
     except:
@@ -54,29 +53,29 @@ def convert_raw_to_temperature(station, data):
         divider = 1.0           # for temperature channel
     else:
         # For seiscape2
-        divider = 8.0       
+        divider = 8.0
     vref = 2.5                  # volts
     temp_scale_factor = 0.01    # volts / deg C (LM35)
-    return data * vref * divider / temp_scale_factor / 2**23 
+    return data * vref * divider / temp_scale_factor / 2**23
 
 
 def convert_raw_to_voltage(station, data):
     # Hack - different conversion factors for different digitizers
     if station == 'OMDBO':
         # For PSN-ADC24
-        divider = 17.0       
+        divider = 17.0
     else:
         # For seiscape2
-        divider = 8.0       
+        divider = 8.0
     vref = 2.5                  # volts
-    return data * vref * divider / 2**23 
+    return data * vref * divider / 2**23
 
 def plot_temperature_and_cf(net, station, loc, chan_temp, chan_cf, starttime, endtime):
-    # Read the response file containing the response data for this channel.         
+    # Read the response file containing the response data for this channel.
     #response_file = '{}_{}.xml'.format(net, station)
     #inv = read_inventory(response_file)
     #print('inv:', inv[0][0][0].response)
-                                          
+
     st_evc = GetLocalDataRange(net, station, loc, chan_cf, starttime, endtime)
     st_evc.merge()
     st_evc.trim(starttime=starttime, endtime=endtime)
@@ -98,8 +97,21 @@ def plot_temperature_and_cf(net, station, loc, chan_temp, chan_cf, starttime, en
     # LP filter the temperature to remove some noise.
     # Cannot filter if trace contains gaps (masked).
     if not np.ma.is_masked(st_evt[0].data):
-        st_evt.filter('lowpass', freq=0.1, corners=8, zerophase=True) 
-    st_evt.trim(starttime=starttime+200, endtime=endtime-200)   # remove filter startup effects
+        st_evt.filter('lowpass', freq=0.1, corners=4, zerophase=True)
+
+    # Remove filter startup effects. Use same times for both streams.
+    start = st_evt[0].stats.starttime
+    end = st_evt[0].stats.endtime
+    st_evt.trim(starttime=start+300, endtime=end-300)
+    st_evc.trim(starttime=start+300, endtime=end-300)
+
+    # Make sure both traces are covering the same time period.
+    start = max(st_evt[0].stats.starttime, st_evc[0].stats.starttime)
+    end = min(st_evt[0].stats.endtime, st_evc[0].stats.endtime)
+    st_evt.trim(starttime=start, endtime=end)
+    st_evc.trim(starttime=start, endtime=end)
+    print(st_evt)
+    print(st_evc)
 
     # This is extremely slow and PolynomialResponse not implemented yet, so
     # just manually convert to temperature.
@@ -114,29 +126,50 @@ def plot_temperature_and_cf(net, station, loc, chan_temp, chan_cf, starttime, en
     tr_evt = st_evt[0]
     tr_evc = st_evc[0]
 
-    fig, axes = plt.subplots(nrows=2, figsize=(12,7.5))
+    # Compute temperature coefficient by fitting the data.
+    coef = np.polyfit(tr_evt.data, tr_evc.data, 1)
+    polynomial = np.poly1d(coef)
+    deltax = max(tr_evt.data)-min(tr_evt.data)
+    xs = np.arange(min(tr_evt.data)-0.1*deltax, max(tr_evt.data)+0.1*deltax, 0.01)
+    ys = polynomial(xs)
+    Ri = 15e3   # appx
+    Gn = 10.6   # appx
+    M0 = 0.0875 # appx
+    tempco_ppm = coef[0] / Ri * Gn / (M0 * 9.81) * 1e6
+    print('Temperature coefficient:', tempco_ppm, 'ppm/degC')
+
+    fig, axes = plt.subplots(nrows=3, figsize=(12,9))
     fig.set_dpi(100)
     fig.autofmt_xdate()  # ticks slanted to allow for more room
     axes[0].plot(tr_evt.times('matplotlib'), tr_evt.data, color='r', label=tr_evt.id)
-    axes[0].set_ylabel('Degrees C')
     axes[1].plot(tr_evc.times('matplotlib'), tr_evc.data, color='b', label=tr_evc.id)
+    axes[2].plot(tr_evt.data, tr_evc.data, color='m', label='CF vs. temperature')
+    axes[2].plot(xs, ys, color='k', linestyle='dashed')
+    axes[0].set_ylabel('Degrees C')
     axes[1].set_ylabel('Volts')
+    axes[2].set_ylabel('Volts')
     axes[0].legend(loc='upper left', handlelength=0)
     axes[1].legend(loc='upper left', handlelength=0)
+    axes[2].legend(loc='lower left', handlelength=0)
     axes[0].xaxis_date()
     axes[1].xaxis_date()
+    axes[2].set_xlabel('Degrees C')
+    plt.setp(axes[0].get_xticklabels(), visible=False)
+    plt.setp(axes[1].get_xticklabels(), visible=True)
+    plt.setp(axes[2].get_xticklabels(), visible=True)
     axes[0].grid(which='major')
     axes[1].grid(which='major')
+    axes[2].grid(which='major')
     axes[0].grid(which='minor', linestyle='dashed')
     axes[1].grid(which='minor', linestyle='dashed')
+    axes[2].grid(which='minor', linestyle='dashed')
     axes[0].xaxis.set_minor_locator(HourLocator(range(0, 25, 1)))
     axes[1].xaxis.set_minor_locator(HourLocator(range(0, 25, 1)))
-    #fig.suptitle(r'$\bf{%s.%s.%s}$' % (net, station, loc) + '\n%d hour instrument temperature and centering force (range = %0.3f deg. C)' % 
-        #(hours, max_temp-min_temp))
     fig.suptitle(
-        r'$\bf{%s.%s.%s}$' % (net, station, loc) + 
-        '\n%d hour instrument temperature (range: %0.3f deg. C) and centering force (range: %0.3f volts)' % 
-        (hours, max_temp-min_temp, max_cf-min_cf))
+        r'$\bf{%s.%s.%s}$' % (net, station, loc) +
+        '\n%d hour instrument temperature (range: %0.3f deg. C) and centering force (range: %0.3f volts)'
+        '\n%.0f ppm/deg. C spring temperature coefficient' %
+        (hours, max_temp-min_temp, max_cf-min_cf, tempco_ppm))
     fig.savefig('daily_temperature_{}_{}_{}.png'.format(net, station, loc), bbox_inches='tight')
 
 ################################################################################
@@ -149,6 +182,7 @@ year = starttime._get_year()
 # Two channels on each of two stations.
 plot_temperature_and_cf('AM', 'OMDBO', '01', 'LKS', 'LEC', starttime, endtime)
 plot_temperature_and_cf('AM', 'GBLCO', '01', 'EVT', 'EVC', starttime, endtime)
+plot_temperature_and_cf('AM', 'XXXXX', '01', 'EVT', 'EVC', starttime, endtime)
 
 print("Done!")
 exit(0)
