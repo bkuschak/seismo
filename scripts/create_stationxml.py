@@ -53,16 +53,16 @@ class Yuma2Response:
             complex('-4.181e-6+0j') ]
     }
     config["3"] = {                             # serial number 3
-        "generator_constant": 999.9,
+        "generator_constant": 1083,
         "poles": [
-            complex('-0.085842+8.651e-4j'),
-            complex('-0.085842-8.651e-4j'),
+            complex('-0.08375+8.264e-4j'),
+            complex('-0.08375-8.264e-4j'),
             complex('-209.7+0j'),
-            complex('-1000+0j'),
-            complex('-1002632+0j') ],
+            complex('-1005+0j'),
+            complex('-1000100+0j') ],
         "zeros": [
             complex('0+0j'),
-            complex('-4.181e-6+0j') ],
+            complex('-4.114e-6+0j') ],
     }
 
     # Usually not instantiated directly.  Use the lookup() method instead.
@@ -789,6 +789,109 @@ def create_station_omdbo():
             serial_number='')))
     return sta
 
+def create_station_xxxxx():
+    yuma_sn = '3'
+    sta = Station(
+        code = 'XXXXX',
+        latitude = 44.04410,
+        longitude = -121.30930,
+        elevation = 1118.0,
+        creation_date = obspy.UTCDateTime(2024, 8, 3),
+        site = Site(name = 'TESTING ONLY. DO NOT USE.'))
+
+    # Vertical
+    sta.channels.append(create_channel(
+        channel = 'BHZ',
+        location = '01',
+        latitude = sta.latitude,
+        longitude = sta.longitude,
+        elevation = sta.elevation,
+        depth = 1.0,
+        sensor_resp = Yuma2Response.lookup(serial_number=yuma_sn).response(),
+        digitizer_resp = Seiscape2Response().response(),
+        sample_rate = 125.0,
+        input_units_str = 'M/S',
+        input_units_desc = 'Velocity in meters per second',
+        sensor = Equipment(
+            description='Velocity sensor',
+            manufacturer='Nelson / Nordgren',
+            model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
+            serial_number='BK 2'),
+        data_logger = Equipment(
+            description='',
+            manufacturer='groundmotion.org',
+            model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
+            serial_number='79cda1')))
+
+    # Temperature sensor
+    sta.channels.append(create_channel(
+        channel = 'EVT',
+        location = '01',
+        latitude = sta.latitude,
+        longitude = sta.longitude,
+        elevation = sta.elevation,
+        depth = 1.0,
+        sensor_resp = Yuma2Response.lookup(serial_number=yuma_sn).temperature_response(),
+        digitizer_resp = Seiscape2Response().response(),
+        sample_rate = 125.0,
+        input_units_str = 'degC',
+        input_units_desc = 'Degrees Centigrade',
+        sensor = Equipment(
+            description='PCB temperature sensor',
+            manufacturer='Nelson / Nordgren',
+            model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
+            serial_number='BK 2'),
+        data_logger = Equipment(
+            description='',
+            manufacturer='groundmotion.org',
+            model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
+            serial_number='79cda1')))
+
+    # Centering force
+    sta.channels.append(create_channel(
+        channel = 'EVC',
+        location = '01',
+        latitude = sta.latitude,
+        longitude = sta.longitude,
+        elevation = sta.elevation,
+        depth = 1.0,
+        sensor_resp = None,
+        digitizer_resp = Seiscape2Response().response(),
+        sample_rate = 125.0,
+        input_units_str = 'Volts',
+        input_units_desc = 'Voltage',
+        sensor = Equipment(
+            description='Centering force',
+            manufacturer='Nelson / Nordgren',
+            model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
+            serial_number='BK 2'),
+        data_logger = Equipment(
+            description='',
+            manufacturer='groundmotion.org',
+            model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
+            serial_number='79cda1')))
+
+    # Shorted inputs (for noise analysis)
+    sta.channels.append(create_channel(
+        channel = 'EVN',
+        location = '01',
+        latitude = sta.latitude,
+        longitude = sta.longitude,
+        elevation = sta.elevation,
+        depth = 1.0,
+        sensor_resp = None,
+        digitizer_resp = Seiscape2Response().response(),
+        sample_rate = 125.0,
+        input_units_str = 'Volts',
+        input_units_desc = 'Voltage',
+        sensor = Equipment(
+            description='Shorted inputs at ADC mux, for noise analysis.'),
+        data_logger = Equipment(
+            manufacturer='groundmotion.org',
+            model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
+            serial_number='79cda1')))
+    return sta
+
 def create_response_files():
     def create_inv_net():
         inv = Inventory(
@@ -800,7 +903,7 @@ def create_response_files():
             description = 'Citizen scientist earthquake monitoring network.')
         return inv, net
 
-    # Create seperate output files for each station.
+    # Station GBLCO
     gblco = create_station_gblco()
     inv, net = create_inv_net()
     net.stations.append(gblco)
@@ -808,6 +911,7 @@ def create_response_files():
     print(inv)
     generate_outputs(inv, net, gblco)
 
+    # Station OMDBO
     omdbo = create_station_omdbo()
     inv, net = create_inv_net()
     net.stations.append(omdbo)
@@ -815,7 +919,16 @@ def create_response_files():
     print(inv)
     generate_outputs(inv, net, omdbo)
 
+    # Station XXXXX
+    xxxxx = create_station_xxxxx()
+    inv, net = create_inv_net()
+    net.stations.append(xxxxx)
+    inv.networks.append(net)
+    print(inv)
+    generate_outputs(inv, net, xxxxx)
+
     # Generate one combined file containing both stations.
+    net.stations.append(omdbo)
     net.stations.append(gblco)
     print(inv)
     generate_outputs(inv, net, None, filename='all_stations.xml')
