@@ -45,11 +45,6 @@ parser.add_argument('--height', type=int, default=600,
     #default=segment_overlap, help='Overlap of segments, from 0.001 to 0.999.')
 parser.add_argument('--path', dest='path', default=path,
     help='Path to the directory of the MiniSEED files.')
-#parser.add_argument('--respfile', dest='response_file', default=response_file,
-	#help='StationXML response definition file (default is {})'.
-    #format(response_file))
-#parser.add_argument('--infile', dest='infile', default=None,
-	#help='MiniSEED input filename')
 parser.add_argument('--outfile', dest='outfile', default=outfile,
 	help='Output filename (default is {}).'.format(outfile))
 parser.add_argument('--dpi', type=int, default=dpi,
