@@ -10,6 +10,9 @@ cd "$(dirname "$0")"
 # GBLCO
 /usr/bin/python3 plot_helicorders_and_spectrum_gblco.py
 
+# XXXX
+/usr/bin/python3 plot_helicorders_and_spectrum_xxxxx.py
+
 # Create PPSD plots every 4 hours.
 if [ ! -f ./ppsd_AM_OMDBO_01_BHZ.png -o "$(find ./ppsd_AM_OMDBO_01_BHZ.png -mmin +240)" ]; then
     /usr/bin/python3 plot_ppsd.py \
@@ -31,6 +34,16 @@ if [ ! -f ./ppsd_AM_GBLCO_01_BHZ.png -o "$(find ./ppsd_AM_GBLCO_01_BHZ.png -mmin
         --segment_overlap=0.5 \
         --rotate 10
 fi
+if [ ! -f ./ppsd_AM_XXXXX_01_BHZ.png -o "$(find ./ppsd_AM_XXXXX_01_BHZ.png -mmin +240)" ]; then
+    /usr/bin/python3 plot_ppsd.py \
+        --path /data/seismometer_data/mseed \
+        --respfile AM_XXXXX.xml \
+        --channel AM.XXXXX.01.BHZ \
+        --outfile ppsd_AM_XXXXX_01_BHZ.png \
+        --segment_len=3600 \
+        --segment_overlap=0.5 \
+        --rotate 10
+fi
 
 # Generate temperature plots.
 /usr/bin/python3 plot_daily_temperature.py
@@ -43,16 +56,22 @@ DEST="~/www/yuma/"
 SRCS=""
 SRCS+="helicorder_broadband_AM_OMDBO_01_BHZ.png "
 SRCS+="helicorder_broadband_AM_GBLCO_01_BHZ.png "
+SRCS+="helicorder_broadband_AM_XXXXX_01_BHZ.png "
 SRCS+="helicorder_broadband_annotated_AM_OMDBO_01_BHZ.png "
 SRCS+="helicorder_broadband_annotated_AM_GBLCO_01_BHZ.png "
+SRCS+="helicorder_broadband_annotated_AM_XXXXX_01_BHZ.png "
 SRCS+="helicorder_teleseismic_AM_OMDBO_01_BHZ.png "
 SRCS+="helicorder_teleseismic_AM_GBLCO_01_BHZ.png "
+SRCS+="helicorder_teleseismic_AM_XXXXX_01_BHZ.png "
 SRCS+="helicorder_teleseismic_annotated_AM_OMDBO_01_BHZ.png "
 SRCS+="helicorder_teleseismic_annotated_AM_GBLCO_01_BHZ.png "
+SRCS+="helicorder_teleseismic_annotated_AM_XXXXX_01_BHZ.png "
 SRCS+="ppsd_AM_OMDBO_01_BHZ.png "
 SRCS+="ppsd_AM_GBLCO_01_BHZ.png "
+SRCS+="ppsd_AM_XXXXX_01_BHZ.png "
 SRCS+="daily_temperature_AM_OMDBO_01.png "
 SRCS+="daily_temperature_AM_GBLCO_01.png "
+SRCS+="daily_temperature_AM_XXXXX_01.png "
 scp ${SRCS} ${HOST}:${DEST}
 
 # Copy most recent spectrums to a staging directory. 
