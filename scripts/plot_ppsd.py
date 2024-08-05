@@ -164,7 +164,7 @@ ppsd = PPSD(
 ppsd.add(st)
 fig = ppsd.plot(
     show=False,
-    period_lim=(1.0/(st[0].stats.sampling_rate/2), 1.0/0.005))
+    period_lim=(1.0/(st[0].stats.sampling_rate/2), 1.0/0.002))
 
 fig.set_size_inches(10,8)
 ax = fig.axes[0]
