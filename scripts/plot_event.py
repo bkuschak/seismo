@@ -73,6 +73,8 @@ parser.add_argument('--min_magnitude', type=float, dest='min_magnitude', default
 
 parser.add_argument('--channel', action='append', dest='channel', default=None,
     help='NETWORK.STATION.LOCATION.CHANNEL format. Multiple channels may be specified.')
+parser.add_argument('--no_detrend', dest='no_detrend', action='store_true',
+    help='Do not detrend / demean the data.')
 parser.add_argument('--deconvolve', dest='deconvolve', action='store_true', 
     help='Deconvolve to remove the instrument response.')
 
@@ -135,13 +137,15 @@ for c in args.channel:
     net, station, loc, chan = c.split('.')
 
     # Use local files for our known channels.
-    if net == 'AM' and station in ['OMDBO', 'GBLCO']:
-        st += GetLocalDataRange(net, station, loc, chan, starttime, endtime)
+    if net == 'AM' and station in ['OMDBO', 'GBLCO', 'XXXXX']:
+        this_st = GetLocalDataRange(net, station, loc, chan, starttime, endtime)
 
         # GBLCO appears to be inverted. Fix that.
         if station == 'GBLCO' and chan == 'BHZ':
-            for t in st:
+            for t in this_st:
                 t.data = t.data * -1.0
+
+        st += this_st
     else:
         # Try to get the data from IRIS.
         st += GetIrisDataRange(net, station, loc, chan, starttime, endtime)
@@ -150,7 +154,8 @@ for c in args.channel:
 # Clean up the trace(s).
 st.merge(method=0, fill_value='interpolate')
 st.trim(starttime=starttime, endtime=endtime)
-st = st.detrend()
+if not args.no_detrend:
+    st = st.detrend()
 print('Streams:\n', st.__str__(extended=True))
 
 # Read the instrument response and deconvolve:
@@ -248,5 +253,5 @@ else:
     for ax in fig.axes:
         ax.set_ylabel('counts')
 
-fig.savefig(outfile)
+fig.savefig(args.outfile)
 exit(0)
