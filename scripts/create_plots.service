@@ -1,0 +1,22 @@
+[Unit]
+Description=Periodically create plots and upload them to the webserver.
+
+# These should not be required, but delay until all local filesystems have been mounted.
+After=local-fs.target
+Requires=local-fs.target
+
+# Wait for network to come up.
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+# Run as normal user, to make ssh authentication easier.
+User=bk
+Group=users
+ExecStart=/home/bk/src/seismo/scripts/create_plots_service.sh
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
+
