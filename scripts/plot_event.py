@@ -78,6 +78,11 @@ parser.add_argument('--no_detrend', dest='no_detrend', action='store_true',
 parser.add_argument('--deconvolve', dest='deconvolve', action='store_true', 
     help='Deconvolve to remove the instrument response.')
 
+parser.add_argument('--wavfile', dest='wavfile', default=None,
+    help='Save data to an audio WAV file.')
+parser.add_argument('--wavrate', type=float, dest='wavrate', default=8000,
+    help='Set the WAV file sample rate.')
+
 #parser.add_argument('--show', action='count', default=None,
     #help='Show the plot interactively.')
 parser.add_argument('-v', '--verbose', action='count',
@@ -253,5 +258,9 @@ else:
     for ax in fig.axes:
         ax.set_ylabel('counts')
 
-fig.savefig(args.outfile)
+fig.savefig(args.outfile, bbox_inches='tight')
+
+if args.wavfile:
+    st.write(args.wavfile, format='WAV', framerate=args.wavrate, rescale=True, width=2)
+
 exit(0)
