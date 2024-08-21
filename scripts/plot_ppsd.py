@@ -16,6 +16,9 @@ import scipy as sy
 import scipy.fftpack as syfp
 import sys
 
+sys.path.append('.')
+from  obspy_helpers import *
+
 # Defaults
 width = 1200
 height = 1000
@@ -52,6 +55,8 @@ parser.add_argument('--respfile', dest='response_file', default=response_file,
     format(response_file))
 parser.add_argument('--server', dest='server', default=None,
     help='Use Seedlink server:port instead of a file')
+parser.add_argument('--iris', dest='iris', action='store_true',
+	help='Get data from IRIS. Mutually exclusive with --server.')
 parser.add_argument('--infile', dest='infile', default=None,
 	help='MiniSEED input filename')
 parser.add_argument('--outfile', dest='outfile', default=outfile, 
@@ -101,7 +106,7 @@ else:
         starttime = endtime - timedelta(days=1)
     else:
         # Most recent 24 hours.
-        endtime = datetime.now() 
+        endtime = datetime.utcnow() 
         starttime = endtime - timedelta(days=1)
         start_doy = starttime.timetuple().tm_yday
         end_doy = endtime.timetuple().tm_yday
@@ -109,7 +114,14 @@ else:
     print('Start time:', starttime)
     print('End time:  ', endtime)
 
-    if args.server:
+    if args.iris:
+        # Get the data from IRIS.
+        net, station, loc, chan = args.channel.split('.')
+        print('Attempting to retrieve {}.{}.{}.{} from IRIS...'.format(net, station, loc, chan))
+        st = GetIrisDataRange(net, station, loc, chan, starttime, endtime)
+        # Write data to a local file.
+        st.write('{}.{}.{}.{}.copy.mseed'.format(net, station, loc, chan))
+    elif args.server:
         print('Use Seedlink server:', args.server)
         net, station, loc, chan = args.channel.split('.')
         print('Attempting to retrieve {}.{}.{}.{}...'.format(net, station, loc, chan))
