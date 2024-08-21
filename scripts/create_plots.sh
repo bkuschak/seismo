@@ -5,16 +5,20 @@
 cd "$(dirname "$0")"
 
 # OMDBO
+echo "OMDBO helicorders"
 /usr/bin/python3 plot_helicorders_and_spectrum.py
 
 # GBLCO
+echo "GBLCO helicorders"
 /usr/bin/python3 plot_helicorders_and_spectrum_gblco.py
 
 # XXXX
+echo "XXXXX helicorders"
 /usr/bin/python3 plot_helicorders_and_spectrum_xxxxx.py
 
 # Create PPSD plots every 4 hours.
 if [ ! -f ./ppsd_AM_OMDBO_01_BHZ.png -o "$(find ./ppsd_AM_OMDBO_01_BHZ.png -mmin +240)" ]; then
+    echo "OMDBO PPSD"
     /usr/bin/python3 plot_ppsd.py \
         --path /data/seismometer_data/mseed \
         --respfile AM_OMDBO.xml \
@@ -25,6 +29,7 @@ if [ ! -f ./ppsd_AM_OMDBO_01_BHZ.png -o "$(find ./ppsd_AM_OMDBO_01_BHZ.png -mmin
         --rotate 10
 fi
 if [ ! -f ./ppsd_AM_GBLCO_01_BHZ.png -o "$(find ./ppsd_AM_GBLCO_01_BHZ.png -mmin +240)" ]; then
+    echo "GBLCO PPSD"
     /usr/bin/python3 plot_ppsd.py \
         --path /data/seismometer_data/mseed \
         --respfile AM_GBLCO.xml \
@@ -35,6 +40,7 @@ if [ ! -f ./ppsd_AM_GBLCO_01_BHZ.png -o "$(find ./ppsd_AM_GBLCO_01_BHZ.png -mmin
         --rotate 10
 fi
 if [ ! -f ./ppsd_AM_XXXXX_01_BHZ.png -o "$(find ./ppsd_AM_XXXXX_01_BHZ.png -mmin +240)" ]; then
+    echo "XXXXX PPSD"
     /usr/bin/python3 plot_ppsd.py \
         --path /data/seismometer_data/mseed \
         --respfile AM_XXXXX.xml \
@@ -46,6 +52,8 @@ if [ ! -f ./ppsd_AM_XXXXX_01_BHZ.png -o "$(find ./ppsd_AM_XXXXX_01_BHZ.png -mmin
 fi
 
 # Generate temperature plots.
+# These are hanging at the moment...
+echo "Daily temperature plots"
 /usr/bin/python3 plot_daily_temperature.py
 
 # Copy the latest helicorder files to the server.
@@ -72,6 +80,7 @@ SRCS+="ppsd_AM_XXXXX_01_BHZ.png "
 SRCS+="daily_temperature_AM_OMDBO_01.png "
 SRCS+="daily_temperature_AM_GBLCO_01.png "
 SRCS+="daily_temperature_AM_XXXXX_01.png "
+echo "Copying files: ${SRCS}"
 scp ${SRCS} ${HOST}:${DEST}
 
 # Copy most recent spectrums to a staging directory. 
@@ -86,6 +95,7 @@ echo "Staging ${NUM_FILES} spectrograms..."
 
 # Rsync the spectrogram files to the server. Delete files that don't exist in the staging dir.
 DEST="~/www/yuma/spectrum"
+echo "Running rsync"
 rsync -avz -e ssh --progress --delete staging/ ${HOST}:${DEST}
 
 # On the server, generate an index of the spectrums.
@@ -105,5 +115,6 @@ tree -H "." \
 EOF
 )
 echo ${INDEX_CMD}
+echo "Generating index"
 ssh -t ${HOST} "cd ${DEST} && ${INDEX_CMD}"
 

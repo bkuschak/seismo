@@ -11,5 +11,6 @@ cd "$(dirname "$0")"
 while true; do
     echo "===================================================================="
     ./create_plots.sh
+    echo "Sleeping until next time..."
     sleep 600
 done
