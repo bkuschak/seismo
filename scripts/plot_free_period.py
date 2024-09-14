@@ -42,7 +42,7 @@ class free_period():
         omega = 2*np.pi*freq
         self.period = 1.0/freq
         #self.zeta = decay_rate / omega  # appx
-        self.zeta = decay_rate / np.sqrt(decay_rate**decay_rate + omega**omega) #exact
+        self.zeta = decay_rate / np.sqrt(decay_rate**2 + omega**2) #exact
         print('period, zeta:', self.period, self.zeta)
 
     def plot(self, plot_filename=''):
