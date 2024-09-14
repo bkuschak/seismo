@@ -34,14 +34,15 @@ class free_period():
         return amplitude * np.exp(-decay_rate*t) * np.sin(2*np.pi*f*t + phi) + offset
 
     def curve_fit(self):
-        #popt, pcov = curve_fit(self.damped_harmonic_oscillator, self.t, self.y)
-        popt, pcov = curve_fit(self.damped_harmonic_oscillator, self.t, self.y, method='lm')
+        # https://en.wikipedia.org/wiki/Damping
+        popt, pcov = curve_fit(self.damped_harmonic_oscillator, self.t, self.y)
         self.y_fit = self.damped_harmonic_oscillator(self.t, *popt)
         decay_rate = popt[1]
         freq = np.abs(popt[2])
         omega = 2*np.pi*freq
         self.period = 1.0/freq
-        self.zeta = decay_rate / np.sqrt(decay_rate**decay_rate * omega**omega)
+        #self.zeta = decay_rate / omega  # appx
+        self.zeta = decay_rate / np.sqrt(decay_rate**decay_rate + omega**omega) #exact
         print('period, zeta:', self.period, self.zeta)
 
     def plot(self, plot_filename=''):
