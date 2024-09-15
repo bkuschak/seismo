@@ -43,7 +43,13 @@ class free_period():
         self.period = 1.0/freq
         #self.zeta = decay_rate / omega  # appx
         self.zeta = decay_rate / np.sqrt(decay_rate**2 + omega**2) #exact
+        self.undamped_period = 1 / self.undamped_frequency(freq, self.zeta)
         print('period, zeta:', self.period, self.zeta)
+
+    def undamped_frequency(self, frequency, zeta):
+        # From the damped frequency and zeta, compute the undamped natural frequency.
+        # wdamped = wnatural * sqrt(1-zeta^2)
+        return frequency / np.sqrt(1 - zeta**2)
 
     def plot(self, plot_filename=''):
         if plot_filename == '':
@@ -54,7 +60,8 @@ class free_period():
         line1, = ax1.plot(self.t, self.y, 'r-', label='Position')
         line2, = ax1.plot(self.t, self.y_fit, 'b--', label='Curve Fit')
         plt.legend((line1, line2), ('Measured', 'Fit'), loc='upper right')
-        plt.title('%s\nFree Period %.2f sec. Damping ratio zeta = %.02f' % (self.unit_name, self.period, self.zeta))
+        plt.title('%s\nFree period %.2f sec. Undamped: %.2f sec. Damping ratio zeta = %.02f' %
+                  (self.unit_name, self.period, self.undamped_period, self.zeta))
         if plot_filename:
             plt.savefig(plot_filename)
         plt.show()
