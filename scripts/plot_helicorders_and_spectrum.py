@@ -28,7 +28,8 @@ chan = 'BHZ'
 age_limit = 120*60
 
 # Units per LSB. FIXME - Get this from dataless SEED if possible?
-units = 1.88e-9		# input data scale m/s per LSB.
+#units = 1.88e-9		# input data scale m/s per LSB.
+units = 3.01e-9		# input data scale m/s per LSB.
 
 # Helicorder scale on the plot.
 scale_broadband_helicorder_line = 30e-6         # m/s 
