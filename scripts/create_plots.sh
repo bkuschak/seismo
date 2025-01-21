@@ -50,6 +50,19 @@ if [ ! -f ./ppsd_AM_XXXXX_01_BHZ.png -o "$(find ./ppsd_AM_XXXXX_01_BHZ.png -mmin
         --segment_overlap=0.5 \
         --rotate 10
 fi
+if [ ! -f ./ppsd_UO_WAGON__HHZ.png -o "$(find ./ppsd_UO_WAGON__HHZ.png -mmin +240)" ]; then
+    echo "UO.WAGON..HHZ PPSD"
+    # WAGON - 20 miles SE of GBLCO
+    # Trillium Cascadia Compact
+    /usr/bin/python3 plot_ppsd.py \
+        --iris \
+        --channel UO.WAGON..HHZ \
+        --respfile UO_WAGON.xml \
+        --outfile ppsd_UO_WAGON__HHZ.png \
+        --segment_len=3600 \
+        --segment_overlap=0.5 \
+        --rotate 10
+fi
 
 # Generate temperature plots.
 # These are hanging at the moment...
@@ -77,6 +90,7 @@ SRCS+="helicorder_teleseismic_annotated_AM_XXXXX_01_BHZ.png "
 SRCS+="ppsd_AM_OMDBO_01_BHZ.png "
 SRCS+="ppsd_AM_GBLCO_01_BHZ.png "
 SRCS+="ppsd_AM_XXXXX_01_BHZ.png "
+SRCS+="ppsd_UO_WAGON__HHZ.png "
 SRCS+="daily_temperature_AM_OMDBO_01.png "
 SRCS+="daily_temperature_AM_GBLCO_01.png "
 SRCS+="daily_temperature_AM_XXXXX_01.png "
