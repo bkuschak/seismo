@@ -29,36 +29,37 @@ class Yuma2Response:
     # Known parameters for each serial number:
     config = {}
     config["1"] = {                             # serial number 1
-        "generator_constant": 1344,             # volt-sec/meter
-        "poles": [
-            complex('-0.08498+8.433e-4j'),
-            complex('-0.08498-8.433e-4j'),
-            complex('-209.7+0j'),
+        #"sensitivity": 1237,                    # volt-sec/meter
+        "sensitivity": 842,                     # volt-sec/meter
+        "poles": [                              # rads/sec
+            complex('-0.08361+8.235e-04j'),
+            complex('-0.08361-8.235e-04j'),
             complex('-1000+0j'),
+            complex('-2135+0j'),
             complex('-1002632+0j') ],
         "zeros": [
             complex('0+0j'),
-            complex('-4.181e-6+0j') ]
+            complex('-4.105e-06+0j') ]
     }
     config["2"] = {                             # serial number 2
-        "generator_constant": 844.5,
+        "sensitivity": 844.5,
         "poles": [
             complex('-0.085842+8.651e-4j'),
             complex('-0.085842-8.651e-4j'),
-            complex('-209.7+0j'),
             complex('-1000+0j'),
+            complex('-2135+0j'),
             complex('-1002632+0j') ],
         "zeros": [
             complex('0+0j'),
             complex('-4.181e-6+0j') ]
     }
     config["3"] = {                             # serial number 3
-        "generator_constant": 1083,
+        "sensitivity": 1083,
         "poles": [
             complex('-0.08375+8.264e-4j'),
             complex('-0.08375-8.264e-4j'),
-            complex('-209.7+0j'),
             complex('-1005+0j'),
+            complex('-2135+0j'),
             complex('-1000100+0j') ],
         "zeros": [
             complex('0+0j'),
@@ -66,13 +67,13 @@ class Yuma2Response:
     }
 
     # Usually not instantiated directly.  Use the lookup() method instead.
-    def __init__(self, serial_number, generator_constant, poles, zeros):
+    def __init__(self, serial_number, sensitivity, poles, zeros):
         self.serial_number = serial_number
         self.normalization_frequency = 1.0
         self.pz_transfer_function_type = 'LAPLACE (RADIANS/SECOND)'
         self.response_stage = PolesZerosResponseStage(
             1,
-            stage_gain = generator_constant,
+            stage_gain = sensitivity,
             stage_gain_frequency = 1.0,
             input_units = 'M/S',
             output_units = 'V',
@@ -123,7 +124,7 @@ class Yuma2Response:
                 .format(serial_number))
         # Create an instance for this serial number.
         data = cls.config[serial_number]
-        return cls(serial_number, data['generator_constant'], data['poles'], data['zeros'])
+        return cls(serial_number, data['sensitivity'], data['poles'], data['zeros'])
 
 
 ################################################################################
