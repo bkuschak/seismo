@@ -2,9 +2,10 @@
 
 import argparse
 import dateutil
+import datetime
 from obspy import UTCDateTime
 from obspy.core.inventory import Inventory, Network, Station, Channel, Site
-from matplotlib.dates import HourLocator, MinuteLocator, SecondLocator
+from matplotlib.dates import HourLocator, MinuteLocator, SecondLocator, num2date
 
 import sys
 sys.path.append('.')
@@ -113,12 +114,13 @@ elif args.eventtime:
     print(events.__str__(print_all=True))
 
     # Choose the event with the largest magnitude.
-    # FIXME
+    index = np.argmax([e.magnitudes[0].mag for e in events])
+    print('Choosing event:', events[index])
 
     # Get all the arrivals for this event. Choose the earliest.
     # FIXME - these will be specific to one site. Make one per site.
     # FIXME - get site from the channel response data instead.
-    eventtime, desc, arrivals, arrival_rayleigh  = GetAllArrivalTimes(events[0], site)
+    eventtime, desc, arrivals, arrival_rayleigh  = GetAllArrivalTimes(events[index], site)
     earliest = min([a.time for a in arrivals])
 
     starttime = eventtime + earliest - args.before
@@ -203,7 +205,7 @@ if args.deconvolve:
             print('Removing instrument response for', s.id, '...')
             s.remove_response(inventory=inv)
             deconvolved = True
-            deconvolved_str = 'Response removed. '
+            deconvolved_str = 'Deconvolved. '
         except Exception as e:
             print('Failed removing instrument response for', s.id)
 
@@ -212,7 +214,7 @@ filter_str = ''
 if args.highpass is not None:
     print('Applying high pass filter...')
     st.filter('highpass', freq=args.highpass, corners=4, zerophase=True)
-    filter_str = 'HP={:.2f} Hz. '.format(args.highpass)
+    filter_str = 'HP={:.3f} Hz. '.format(args.highpass)
 if args.lowpass is not None:
     print('Applying low pass filter...')
     st.filter('lowpass', freq=args.lowpass, corners=4, zerophase=True)
@@ -232,14 +234,24 @@ if starttrim != 0 or endtrim != 0:
     st.trim(starttime=starttime+starttrim, endtime=endtime-endtrim)
 
 # Plot
-print('Plotting streams as {}:\n'.format(outfile), st.__str__(extended=True))
-fig = st.plot(show=False, size=(args.width,args.height), equal_scale=False, linewidth=1.0, color='blue')
+print('Plotting streams as {}:\n'.format(args.outfile), st.__str__(extended=True))
+#fig = st.plot(show=False, size=(args.width,args.height), equal_scale=False, linewidth=1.0, color='blue')
+fig = st.plot(show=False, size=(args.width,args.height), equal_scale=True, linewidth=1.0, color='blue')
 ax = fig.gca()
 if arrivals:
+    for ax in fig.axes:
+        ax.axvline(eventtime.datetime, linestyle='-', label='Event', alpha=0.5, linewidth=0.5, color = next(ax._get_lines.prop_cycler)['color'])
     for a in arrivals:
         t = eventtime + a.time
         name = str(a.name)
         for ax in fig.axes:
+            # Skip arrivals that are outside the plot boundaries.
+            # Compare matplot dates to UTCDateTime
+            xlim = num2date(ax.get_xlim())
+            if t.datetime.replace(tzinfo=datetime.timezone.utc) < xlim[0] or \
+               t.datetime.replace(tzinfo=datetime.timezone.utc) > xlim[1]:
+                print('skipping arrival at', t)
+                continue
             ax.axvline(t.datetime, linestyle='--', label=name, alpha=0.5, linewidth=0.5, color = next(ax._get_lines.prop_cycler)['color'])
             ax.grid(which='minor', linestyle='dashed')
             ax.grid(which='major')
@@ -247,9 +259,11 @@ if arrivals:
             #ax.xaxis.set_major_locator(MinuteLocator(range(0, 60, 1)))
     title_str = desc + '\nEvent time: ' + eventtime.datetime.isoformat() + '. '
     title_str += filter_str + deconvolved_str
-    #fig.suptitle(desc + '\nEvent time: ' + eventtime.datetime.isoformat())
     fig.suptitle(title_str)
     ax.legend(loc='upper right')
+
+for ax in fig.axes:
+    ax.grid()
 
 if deconvolved:
     for ax in fig.axes:
