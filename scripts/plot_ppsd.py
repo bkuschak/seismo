@@ -137,7 +137,7 @@ else:
             year = t.timetuple().tm_year
             doy = t.timetuple().tm_yday
 
-            fname = '{}/{}.{}.{}.mseed'.format(args.path, args.channel, year, doy)
+            fname = '{}/{}.{}.{:03d}.mseed'.format(args.path, args.channel, year, doy)
             print('Attempting to open file "{}"...'.format(fname))
             try:
                 st += read(fname)
