@@ -19,7 +19,7 @@ import gc
 # Read the station data from a local file.
 def GetLocalData(net, station, loc, chan, year=0, doy=0):
     try:
-        st = read('/data/seismometer_data/mseed/%s.%s.%s.%s.%d.%d.mseed' % (net, station, loc, chan, year, doy))
+        st = read('/data/seismometer_data/mseed/%s.%s.%s.%s.%d.%03d.mseed' % (net, station, loc, chan, year, doy))
         return st
     except:
         return None
@@ -33,6 +33,7 @@ def GetLocalDataRange(net, station, loc, chan, starttime, endtime):
     while True:
         try:
             st += GetLocalData(net, station, loc, chan, year, doy)
+            print(st.__str__(extended=True))
         except Exception as e:
             print(e)
         if year == end_year and doy == end_doy:
@@ -71,28 +72,41 @@ def convert_raw_to_voltage(station, data):
     return data * vref * divider / 2**23
 
 def plot_temperature_and_cf(net, station, loc, chan_temp, chan_cf, starttime, endtime):
-    # Read the response file containing the response data for this channel.
-    #response_file = '{}_{}.xml'.format(net, station)
-    #inv = read_inventory(response_file)
-    #print('inv:', inv[0][0][0].response)
+    print('Plot temperature plots for {}.{}.{}'.format(net, station, loc))
 
     st_evc = GetLocalDataRange(net, station, loc, chan_cf, starttime, endtime)
     st_evc.merge()
     st_evc.trim(starttime=starttime, endtime=endtime)
     print(st_evc.__str__(extended=True))
+    print('before decimation min_cf:', min(st_evc[0].data), 'max_cf:', max(st_evc[0].data))
 
-    # This is extremely slow and PolynomialResponse not implemented yet, so
-    # just manually convert to temperature.
-    #st_evc.attach_response(inv)
-    #st_evc.remove_response(inventory=inv)
+    # Decimate if the data is sampled faster than 4Hz. Skip the antialias
+    # filtering since it won't work correctly with masked data.  This should be
+    # OK since the temp and EC change very slowly.
+    for st in st_evc:
+        while st.stats.sampling_rate > 4.0:
+            st.decimate(factor=4, strict_length=False, no_filter=True)
+            print(str(st), 'Decimated stream to', st.stats.sampling_rate, 'Hz')
+
+    # remove_response() is extremely slow and PolynomialResponse not
+    # implemented yet, so just manually convert to temperature.
     st_evc[0].data = convert_raw_to_voltage(station, st_evc[0].data)
     min_cf = min(st_evc[0].data)
     max_cf = max(st_evc[0].data)
+    print('after decimation min_cf:', min_cf, 'max_cf:', max_cf)
 
     st_evt = GetLocalDataRange(net, station, loc, chan_temp, starttime, endtime)
     st_evt.merge()
     st_evt.trim(starttime=starttime, endtime=endtime)
     print(st_evt.__str__(extended=True))
+
+    # Decimate if the data is sampled faster than 4Hz. Skip the antialias
+    # filtering since it won't work correctly with masked data.  This should be
+    # OK since the temp and EC change very slowly.
+    for st in st_evt:
+        while st.stats.sampling_rate > 4.0:
+            st.decimate(factor=4, strict_length=False, no_filter=True)
+            print(str(st), 'Decimated stream to', st.stats.sampling_rate, 'Hz')
 
     # LP filter the temperature to remove some noise.
     # Cannot filter if trace contains gaps (masked).
@@ -127,24 +141,40 @@ def plot_temperature_and_cf(net, station, loc, chan_temp, chan_cf, starttime, en
     tr_evc = st_evc[0]
 
     # Compute temperature coefficient by fitting the data.
-    coef = np.polyfit(tr_evt.data, tr_evc.data, 1)
-    polynomial = np.poly1d(coef)
-    deltax = max(tr_evt.data)-min(tr_evt.data)
-    xs = np.arange(min(tr_evt.data)-0.1*deltax, max(tr_evt.data)+0.1*deltax, 0.01)
-    ys = polynomial(xs)
-    Ri = 15e3   # appx
-    Gn = 10.6   # appx
-    M0 = 0.0875 # appx
-    tempco_ppm = coef[0] / Ri * Gn / (M0 * 9.81) * 1e6
-    print('Temperature coefficient:', tempco_ppm, 'ppm/degC')
+    # Does not work if the data contains some Nan values (masked?).
+    # Does not work if the data contains masked values.
+    #if np.isnan(tr_evt.data).any() or np.isnan(tr_evc.data).any():
+    if np.ma.is_masked(tr_evt.data) or np.ma.is_masked(tr_evc.data):
+        print('Skipping temperature coefficient calculation due to NAN values.')
+        skip_tempco = True
+        tempco_ppm = 0
+    elif len(tr_evt.data) != len(tr_evc.data):
+        print('Unable to fit temperature coefficient due to different lengths.')
+        skip_tempco = True
+        tempco_ppm = 0
+    else:
+        # FIXME - assumes the same number of points in EVT and EVC.
+        # Won't work if they are different sample rates.
+        coef = np.polyfit(tr_evt.data, tr_evc.data, 1)
+        polynomial = np.poly1d(coef)
+        deltax = max(tr_evt.data)-min(tr_evt.data)
+        xs = np.arange(min(tr_evt.data)-0.1*deltax, max(tr_evt.data)+0.1*deltax, 0.01)
+        ys = polynomial(xs)
+        Ri = 15e3   # appx
+        Gn = 10.6   # appx
+        M0 = 0.0875 # appx
+        tempco_ppm = coef[0] / Ri * Gn / (M0 * 9.81) * 1e6
+        print('Temperature coefficient:', tempco_ppm, 'ppm/degC')
+        skip_tempco = False
 
     fig, axes = plt.subplots(nrows=3, figsize=(12,9))
     fig.set_dpi(100)
     fig.autofmt_xdate()  # ticks slanted to allow for more room
     axes[0].plot(tr_evt.times('matplotlib'), tr_evt.data, color='r', label=tr_evt.id)
     axes[1].plot(tr_evc.times('matplotlib'), tr_evc.data, color='b', label=tr_evc.id)
-    axes[2].plot(tr_evt.data, tr_evc.data, color='m', label='CF vs. temperature')
-    axes[2].plot(xs, ys, color='k', linestyle='dashed')
+    if not skip_tempco:
+        axes[2].plot(tr_evt.data, tr_evc.data, color='m', label='CF vs. temperature')
+        axes[2].plot(xs, ys, color='k', linestyle='dashed')
     axes[0].set_ylabel('Degrees C')
     axes[1].set_ylabel('Volts')
     axes[2].set_ylabel('Volts')
@@ -165,11 +195,17 @@ def plot_temperature_and_cf(net, station, loc, chan_temp, chan_cf, starttime, en
     axes[2].grid(which='minor', linestyle='dashed')
     axes[0].xaxis.set_minor_locator(HourLocator(range(0, 25, 1)))
     axes[1].xaxis.set_minor_locator(HourLocator(range(0, 25, 1)))
-    fig.suptitle(
-        r'$\bf{%s.%s.%s}$' % (net, station, loc) +
-        '\n%d hour instrument temperature (range: %0.3f deg. C) and centering force (range: %0.3f volts)'
-        '\n%.0f ppm/deg. C spring temperature coefficient' %
-        (hours, max_temp-min_temp, max_cf-min_cf, tempco_ppm))
+    suptitle = r'$\bf{%s.%s.%s}$' % (net, station, loc) + \
+        '\n%d hour instrument temperature (range: %0.3f deg. C) and centering force (range: %0.3f volts)' % \
+        (hours, max_temp-min_temp, max_cf-min_cf)
+    if not skip_tempco:
+        suptitle += '\n%.0f ppm/deg. C temperature coefficient' % (tempco_ppm)
+#    fig.suptitle(
+#        r'$\bf{%s.%s.%s}$' % (net, station, loc) +
+#        '\n%d hour instrument temperature (range: %0.3f deg. C) and centering force (range: %0.3f volts)'
+#        '\n%.0f ppm/deg. C spring temperature coefficient' %
+#        (hours, max_temp-min_temp, max_cf-min_cf, tempco_ppm))
+    fig.suptitle(suptitle)
     fig.savefig('daily_temperature_{}_{}_{}.png'.format(net, station, loc), bbox_inches='tight')
 
 ################################################################################
@@ -181,8 +217,8 @@ year = starttime._get_year()
 
 # Two channels on each of two stations.
 plot_temperature_and_cf('AM', 'OMDBO', '01', 'LKS', 'LEC', starttime, endtime)
-plot_temperature_and_cf('AM', 'GBLCO', '01', 'EVT', 'EVC', starttime, endtime)
 plot_temperature_and_cf('AM', 'XXXXX', '01', 'EVT', 'EVC', starttime, endtime)
+plot_temperature_and_cf('AM', 'GBLCO', '01', 'EVT', 'EVC', starttime, endtime)
 
 print("Done!")
 exit(0)
