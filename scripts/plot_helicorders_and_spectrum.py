@@ -225,6 +225,12 @@ def Helicorder(stream, filename, location, starttime, duration, freqmin=0,
 
     fig.axes[0].set_xlabel('')
 
+    # Make markers transparent.
+    ax = fig.gca()
+    for l in ax.lines:
+        l._markerfacecolor = (1, 1, 0, 0.7) # yellow
+        l._markeredgecolor = (1, 1, 0, 0.5) # yellow
+
     # Add any other drawing here.
     FixupAnnotations(fig)
     fig.canvas.draw()
