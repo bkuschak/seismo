@@ -164,7 +164,7 @@ def plot_temperature_and_cf(net, station, loc, chan_temp, chan_cf, starttime, en
         Gn = 10.6   # appx
         M0 = 0.0875 # appx
         tempco_ppm = coef[0] / Ri * Gn / (M0 * 9.81) * 1e6
-        print('Temperature coefficient:', tempco_ppm, 'ppm/degC')
+        print('Temperature coefficient:', tempco_ppm, 'ppm/°C')
         skip_tempco = False
 
     fig, axes = plt.subplots(nrows=3, figsize=(12,9))
@@ -196,14 +196,14 @@ def plot_temperature_and_cf(net, station, loc, chan_temp, chan_cf, starttime, en
     axes[0].xaxis.set_minor_locator(HourLocator(range(0, 25, 1)))
     axes[1].xaxis.set_minor_locator(HourLocator(range(0, 25, 1)))
     suptitle = r'$\bf{%s.%s.%s}$' % (net, station, loc) + \
-        '\n%d hour instrument temperature (range: %0.3f deg. C) and centering force (range: %0.3f volts)' % \
+        '\n%d hour instrument temperature (range: %0.3f °C) and centering force (range: %0.3f volts)' % \
         (hours, max_temp-min_temp, max_cf-min_cf)
     if not skip_tempco:
-        suptitle += '\n%.0f ppm/deg. C temperature coefficient' % (tempco_ppm)
+        suptitle += '\n%.0f ppm/°C temperature coefficient' % (tempco_ppm)
 #    fig.suptitle(
 #        r'$\bf{%s.%s.%s}$' % (net, station, loc) +
-#        '\n%d hour instrument temperature (range: %0.3f deg. C) and centering force (range: %0.3f volts)'
-#        '\n%.0f ppm/deg. C spring temperature coefficient' %
+#        '\n%d hour instrument temperature (range: %0.3f °C) and centering force (range: %0.3f volts)'
+#        '\n%.0f ppm/°C spring temperature coefficient' %
 #        (hours, max_temp-min_temp, max_cf-min_cf, tempco_ppm))
     fig.suptitle(suptitle)
     fig.savefig('daily_temperature_{}_{}_{}.png'.format(net, station, loc), bbox_inches='tight')
