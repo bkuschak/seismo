@@ -65,6 +65,18 @@ class Yuma2Response:
             complex('0+0j'),
             complex('-4.114e-6+0j') ],
     }
+    config["4"] = {                             # serial number 4 (estimated)
+        "sensitivity": 1266,                    # estimate
+        "poles": [
+            complex('-0.08375+8.264e-4j'),
+            complex('-0.08375-8.264e-4j'),
+            complex('-1005+0j'),
+            complex('-2135+0j'),
+            complex('-1000100+0j') ],
+        "zeros": [
+            complex('0+0j'),
+            complex('-4.114e-6+0j') ],
+    }
 
     # Usually not instantiated directly.  Use the lookup() method instead.
     def __init__(self, serial_number, sensitivity, poles, zeros):
@@ -402,6 +414,7 @@ def calc_sinc_filter_coefficients(order, length):
     for i in range(order-1):
         coef = convolve(coef, coef, mode='full', method='direct')
 
+    coef = list(coef)
     print(order, 'order sinc filter length', len(coef))
     #print(coef)
     return coef
@@ -724,7 +737,7 @@ def create_station_omdbo():
         longitude = sta.longitude,
         elevation = sta.elevation,
         depth = 1.0,
-        sensor_resp = Yuma2Response.lookup(serial_number='1').response(),
+        sensor_resp = Yuma2Response.lookup(serial_number='4').response(),
         digitizer_resp = PsnAdc24Response().response(),
         sample_rate = 125.0,
         input_units_str = 'M/S',
@@ -733,7 +746,7 @@ def create_station_omdbo():
             description='Velocity sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
-            serial_number='BK 1'),
+            serial_number='BK 4'),
         data_logger = Equipment(
             description='',
             manufacturer='Webtronics',
@@ -749,7 +762,7 @@ def create_station_omdbo():
         longitude = sta.longitude,
         elevation = sta.elevation,
         depth = 1.0,
-        sensor_resp = Yuma2Response.lookup(serial_number='1').temperature_response(),
+        sensor_resp = Yuma2Response.lookup(serial_number='4').temperature_response(),
         digitizer_resp = PsnAdc24Response().response(),
         sample_rate = 1.0,
         input_units_str = 'degC',
@@ -758,7 +771,7 @@ def create_station_omdbo():
             description='PCB temperature sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
-            serial_number='BK 1'),
+            serial_number='BK 4'),
         data_logger = Equipment(
             description='',
             manufacturer='Webtronics',
@@ -782,7 +795,7 @@ def create_station_omdbo():
             description='Centering force',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
-            serial_number='BK 1'),
+            serial_number='BK 4'),
         data_logger = Equipment(
             description='',
             manufacturer='Webtronics',
