@@ -30,13 +30,13 @@ chan = 'BHZ'
 age_limit = 120*60
 
 # Units per LSB. FIXME - Get this from dataless SEED if possible?
-#units = 1.77e-9     # input data scale m/s per LSB. For seiscape2 digitizer.
-units = 2.82e-9      # input data scale m/s per LSB. Unit #2 + seiscape2 digitizer.
+#units = 2.82e-9      # input data scale m/s per LSB. Unit #2 + seiscape2 digitizer.
+units = 3.01e-9       # input data scale m/s per LSB. Unit #4 + seiscape2 digitizer. Estimate only.
 
 # Helicorder scale on the plot.
-scale_broadband_helicorder_line = 10e-6         # m/s 
-scale_teleseismic_helicorder_line = 300e-9      # m/s 
-scale_microseism_helicorder_line = 300e-9      # m/s 
+scale_broadband_helicorder_line = 10e-6         # m/s
+scale_teleseismic_helicorder_line = 300e-9      # m/s
+scale_microseism_helicorder_line = 300e-9      # m/s
 
 # Latitude and longitude of the our location
 # FIXME - get this from dataless SEED?
@@ -242,7 +242,7 @@ def Helicorder(stream, filename, location, starttime, duration, freqmin=0,
 
 # Make a spectrogram plot and save to file.
 def Spectrogram(stream, filename, starttime, duration, title=None, freqmin=0, 
-        freqmax=0, decimation=1, per_lap=0.95, wlen=300.0, vline=None):
+        freqmax=0, decimation=1, per_lap=0.95, wlen=300.0, vline=None, dbscale=False, clip=[0,0.05]):
     print("Plotting spectrogram", filename, "from", starttime, "to", endtime)
     st = stream.copy()
     # Filter first, then slice, to minimize filter startup transient.
@@ -277,8 +277,9 @@ def Spectrogram(stream, filename, starttime, duration, title=None, freqmin=0,
 
     # Don't plot to file immediately. Set the ylimit and title manually.
     # FIXME
-    fig = st.spectrogram(log=False, per_lap=per_lap, wlen=wlen, dbscale=False, 
-        show=False)
+    #fig = st.spectrogram(log=False, per_lap=per_lap, wlen=wlen, dbscale=False, 
+    fig = st.spectrogram(log=False, per_lap=per_lap, wlen=wlen, dbscale=dbscale, 
+        show=False, clip=clip)
     fig = fig[0]
     ax = fig.axes[0]
     if freqmax != 0:
@@ -390,7 +391,7 @@ for e in broadband_events:
         (e.short_str(), e.event_descriptions[0].text, d/1000, a))
 
 # Filter quakes that we care about for the teleseismic plot:
-filt = [ (4.0, 8000*1000), (4.5, 12000*1000), (5.0, 15000*1000), 
+filt = [ (4.0, 3000*1000), (4.5, 7000*1000), (5.0, 15000*1000), 
          (6.0, float('inf')) ]
 teleseismic_events = FilterEvents(all_events, filt, site[0], site[1])
 for e in teleseismic_events:
@@ -453,7 +454,7 @@ for t,desc,f,r in teleseismic_arrivals:
 # Spectrograms for entire day.
 filename = MakeFilename(st, 'spectrum_broadband_all_day', 'png')
 Spectrogram(st, filename, starttime, endtime-starttime, freqmin=0.1,
-	freqmax=25.0, decimation=2, title='All day', wlen=30.0, per_lap=0.5)
+	freqmax=25.0, decimation=2, title='All day', wlen=30.0, per_lap=0.5, dbscale=True)
 
 filename = MakeFilename(st, 'spectrum_teleseismic_all_day', 'png')
 Spectrogram(st, filename, starttime, endtime-starttime, freqmin=0.005,

@@ -29,7 +29,9 @@ age_limit = 120*60
 
 # Units per LSB. FIXME - Get this from dataless SEED if possible?
 #units = 1.88e-9		# input data scale m/s per LSB.
-units = 3.01e-9		# input data scale m/s per LSB.
+
+#units = 3.01e-9		# input data scale m/s per LSB.
+units = 2.0e-9		# input data scale m/s per LSB.
 
 # Helicorder scale on the plot.
 scale_broadband_helicorder_line = 30e-6         # m/s 
@@ -385,7 +387,7 @@ for e in broadband_events:
         (e.short_str(), d/1000, a))
 
 # Filter quakes that we care about for the teleseismic plot:
-filt = [ (4.0, 8000*1000), (4.5, 12000*1000), (5.0, 15000*1000), 
+filt = [ (4.0, 3000*1000), (4.5, 7000*1000), (5.0, 15000*1000), 
          (6.0, float('inf')) ]
 teleseismic_events = FilterEvents(all_events, filt, site[0], site[1])
 for e in teleseismic_events:
