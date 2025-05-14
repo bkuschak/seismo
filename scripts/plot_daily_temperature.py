@@ -51,11 +51,13 @@ def convert_raw_to_temperature(station, data):
     # Hack - different conversion factors for different digitizers
     if station == 'OMDBO':
         # For PSN-ADC24
+        # PSN-ADC24 uses 2.5V with ADC gain=1 for temperature channel.
         divider = 1.0           # for temperature channel
+        vref = 2.5              # volts
     else:
         # For seiscape2
         divider = 8.0
-    vref = 2.5                  # volts
+        vref = 2.5              # volts
     temp_scale_factor = 0.01    # volts / deg C (LM35)
     return data * vref * divider / temp_scale_factor / 2**23
 
@@ -64,11 +66,13 @@ def convert_raw_to_voltage(station, data):
     # Hack - different conversion factors for different digitizers
     if station == 'OMDBO':
         # For PSN-ADC24
+        # PSN-ADC24 uses 1.25V with ADC gain=2 for BHZ and EC channel.
         divider = 17.0
+        vref = 1.25                 # volts
     else:
         # For seiscape2
         divider = 8.0
-    vref = 2.5                  # volts
+        vref = 2.5                  # volts
     return data * vref * divider / 2**23
 
 def plot_temperature_and_cf(net, station, loc, chan_temp, chan_cf, starttime, endtime):
@@ -216,9 +220,23 @@ endtime = now
 year = starttime._get_year()
 
 # Two channels on each of two stations.
-plot_temperature_and_cf('AM', 'OMDBO', '01', 'LKS', 'LEC', starttime, endtime)
-plot_temperature_and_cf('AM', 'XXXXX', '01', 'EVT', 'EVC', starttime, endtime)
-plot_temperature_and_cf('AM', 'GBLCO', '01', 'EVT', 'EVC', starttime, endtime)
+try:
+    plot_temperature_and_cf('AM', 'OMDBO', '01', 'LKS', 'LEC', starttime, endtime)
+except Exception as e:
+    print(repr(e))
+    print("Failed plotting daily temperature for OMDBO")
+
+try:
+    plot_temperature_and_cf('AM', 'XXXXX', '01', 'EVT', 'EVC', starttime, endtime)
+except Exception as e:
+    print(repr(e))
+    print("Failed plotting daily temperature for XXXXX")
+
+try:
+    plot_temperature_and_cf('AM', 'GBLCO', '01', 'EVT', 'EVC', starttime, endtime)
+except Exception as e:
+    print(repr(e))
+    print("Failed plotting daily temperature for GBLCO")
 
 print("Done!")
 exit(0)
