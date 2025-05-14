@@ -3,7 +3,7 @@
   <Source>groundmotion.org</Source>
   <Module>ObsPy 1.1.1</Module>
   <ModuleURI>https://www.obspy.org</ModuleURI>
-  <Created>2024-08-24T17:06:26.485970Z</Created>
+  <Created>2025-05-02T22:25:25.867573Z</Created>
   <Network code="AM">
     <Description>Citizen scientist earthquake monitoring network.</Description>
     <Station code="OMDBO">
@@ -26,7 +26,7 @@
           <Description>Velocity sensor</Description>
           <Manufacturer>Nelson / Nordgren</Manufacturer>
           <Model>Yuma2 FBV mechanical rev 4.3, electrical rev 4.0</Model>
-          <SerialNumber>BK 1</SerialNumber>
+          <SerialNumber>BK 4</SerialNumber>
         </Sensor>
         <DataLogger>
           <Description></Description>
@@ -36,7 +36,7 @@
         </DataLogger>
         <Response>
           <InstrumentSensitivity>
-            <Value>332167704.539</Value>
+            <Value>499435052.193</Value>
             <Frequency>1.0</Frequency>
             <InputUnits>
               <Name>M/S</Name>
@@ -58,26 +58,26 @@
                 <Description>Volts</Description>
               </OutputUnits>
               <PzTransferFunctionType>LAPLACE (RADIANS/SECOND)</PzTransferFunctionType>
-              <NormalizationFactor>2141049865843.5496</NormalizationFactor>
+              <NormalizationFactor>2146322026216.1084</NormalizationFactor>
               <NormalizationFrequency unit="HERTZ">1.0</NormalizationFrequency>
               <Zero number="0">
                 <Real>0.0</Real>
                 <Imaginary>0.0</Imaginary>
               </Zero>
               <Zero number="1">
-                <Real>-4.105e-06</Real>
+                <Real>-4.114e-06</Real>
                 <Imaginary>0.0</Imaginary>
               </Zero>
               <Pole number="0">
-                <Real>-0.08361</Real>
-                <Imaginary>0.0008235</Imaginary>
+                <Real>-0.08375</Real>
+                <Imaginary>0.0008264</Imaginary>
               </Pole>
               <Pole number="1">
-                <Real>-0.08361</Real>
-                <Imaginary>-0.0008235</Imaginary>
+                <Real>-0.08375</Real>
+                <Imaginary>-0.0008264</Imaginary>
               </Pole>
               <Pole number="2">
-                <Real>-1000.0</Real>
+                <Real>-1005.0</Real>
                 <Imaginary>0.0</Imaginary>
               </Pole>
               <Pole number="3">
@@ -85,12 +85,12 @@
                 <Imaginary>0.0</Imaginary>
               </Pole>
               <Pole number="4">
-                <Real>-1002632.0</Real>
+                <Real>-1000100.0</Real>
                 <Imaginary>0.0</Imaginary>
               </Pole>
             </PolesZeros>
             <StageGain>
-              <Value>842</Value>
+              <Value>1266</Value>
               <Frequency>1.0</Frequency>
             </StageGain>
           </Stage>
@@ -816,7 +816,7 @@
           <Description>PCB temperature sensor</Description>
           <Manufacturer>Nelson / Nordgren</Manufacturer>
           <Model>Yuma2 FBV mechanical rev 4.3, electrical rev 4.0</Model>
-          <SerialNumber>BK 1</SerialNumber>
+          <SerialNumber>BK 4</SerialNumber>
         </Sensor>
         <DataLogger>
           <Description></Description>
@@ -1590,7 +1590,7 @@
           <Description>Centering force</Description>
           <Manufacturer>Nelson / Nordgren</Manufacturer>
           <Model>Yuma2 FBV mechanical rev 4.3, electrical rev 4.0</Model>
-          <SerialNumber>BK 1</SerialNumber>
+          <SerialNumber>BK 4</SerialNumber>
         </Sensor>
         <DataLogger>
           <Description></Description>
