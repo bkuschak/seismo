@@ -49,7 +49,7 @@ def MakeFilename(st, basename, extension):
 
 def convert_raw_to_temperature(station, data):
     # Hack - different conversion factors for different digitizers
-    if station == 'OMDBO':
+    if station == 'OMDBO' or station == 'BCCWA':
         # For PSN-ADC24
         # PSN-ADC24 uses 2.5V with ADC gain=1 for temperature channel.
         divider = 1.0           # for temperature channel
@@ -64,7 +64,7 @@ def convert_raw_to_temperature(station, data):
 
 def convert_raw_to_voltage(station, data):
     # Hack - different conversion factors for different digitizers
-    if station == 'OMDBO':
+    if station == 'OMDBO' or station == 'BCCWA':
         # For PSN-ADC24
         # PSN-ADC24 uses 1.25V with ADC gain=2 for BHZ and EC channel.
         divider = 17.0
@@ -221,16 +221,10 @@ year = starttime._get_year()
 
 # Two channels on each of two stations.
 try:
-    plot_temperature_and_cf('AM', 'OMDBO', '01', 'LKS', 'LEC', starttime, endtime)
+    plot_temperature_and_cf('AM', 'BCCWA', '01', 'LKS', 'LEC', starttime, endtime)
 except Exception as e:
     print(repr(e))
-    print("Failed plotting daily temperature for OMDBO")
-
-try:
-    plot_temperature_and_cf('AM', 'XXXXX', '01', 'EVT', 'EVC', starttime, endtime)
-except Exception as e:
-    print(repr(e))
-    print("Failed plotting daily temperature for XXXXX")
+    print("Failed plotting daily temperature for BCCWA")
 
 try:
     plot_temperature_and_cf('AM', 'GBLCO', '01', 'EVT', 'EVC', starttime, endtime)
