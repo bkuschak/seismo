@@ -454,7 +454,7 @@ for t,desc,f,r in teleseismic_arrivals:
 # Spectrograms for entire day.
 filename = MakeFilename(st, 'spectrum_broadband_all_day', 'png')
 Spectrogram(st, filename, starttime, endtime-starttime, freqmin=0.1,
-	freqmax=25.0, decimation=2, title='All day', wlen=30.0, per_lap=0.5, dbscale=True)
+	freqmax=25.0, decimation=2, title='All day', wlen=30.0, per_lap=0.5)
 
 filename = MakeFilename(st, 'spectrum_teleseismic_all_day', 'png')
 Spectrogram(st, filename, starttime, endtime-starttime, freqmin=0.005,
