@@ -15,12 +15,12 @@ import gc
 ################################################################################
 
 # For plot annotations.
-location = 'Bend, OR'
+location = 'Vancouver, WA'
 
 # Server to query and data to plot.
 seedlink_server = 'archive.local'
 net = 'AM'
-station = 'OMDBO'
+station = 'BCCWA'
 loc = '01'
 chan = 'BHZ'
 
@@ -40,7 +40,7 @@ scale_microseism_helicorder_line = 300e-9      # m/s
 
 # Latitude and longitude of the our location
 # FIXME - get this from dataless SEED?
-site = (44.0464, -121.3151)
+site = (45.617450, -122.498994)
 
 ################################################################################
 
