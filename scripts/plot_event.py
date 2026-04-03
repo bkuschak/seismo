@@ -14,6 +14,7 @@ from  obspy_helpers import *
 ################################################################################
 
 #site = (44.0464, -121.3151)     # OMDBO
+#site = (45.617450, -122.498994) # BCCWA
 site = (43.50999, -120.24793)   # GBLCO
 
 # Defaults
@@ -144,7 +145,7 @@ for c in args.channel:
     net, station, loc, chan = c.split('.')
 
     # Use local files for our known channels.
-    if net == 'AM' and station in ['OMDBO', 'GBLCO', 'XXXXX']:
+    if net == 'AM' and station in ['BCCWA', 'OMDBO', 'GBLCO', 'XXXXX']:
         this_st = GetLocalDataRange(net, station, loc, chan, starttime, endtime)
 
         # GBLCO appears to be inverted. Fix that.
