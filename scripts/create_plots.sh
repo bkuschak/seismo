@@ -4,26 +4,22 @@
 # cd to the directory where the script is located.
 cd "$(dirname "$0")"
 
-# OMDBO
-echo "OMDBO helicorders"
+# BCCWA
+echo "BCCWA helicorders"
 /usr/bin/python3 plot_helicorders_and_spectrum.py
 
 # GBLCO
 echo "GBLCO helicorders"
 /usr/bin/python3 plot_helicorders_and_spectrum_gblco.py
 
-# XXXX
-echo "XXXXX helicorders"
-/usr/bin/python3 plot_helicorders_and_spectrum_xxxxx.py
-
 # Create PPSD plots every 4 hours.
-if [ ! -f ./ppsd_AM_OMDBO_01_BHZ.png -o "$(find ./ppsd_AM_OMDBO_01_BHZ.png -mmin +240)" ]; then
-    echo "OMDBO PPSD"
+if [ ! -f ./ppsd_AM_BCCWA_01_BHZ.png -o "$(find ./ppsd_AM_BCCWA_01_BHZ.png -mmin +240)" ]; then
+    echo "BCCWA PPSD"
     /usr/bin/python3 plot_ppsd.py \
         --path /data/seismometer_data/mseed \
-        --respfile AM_OMDBO.xml \
-        --channel AM.OMDBO.01.BHZ \
-        --outfile ppsd_AM_OMDBO_01_BHZ.png \
+        --respfile AM_BCCWA.xml \
+        --channel AM.BCCWA.01.BHZ \
+        --outfile ppsd_AM_BCCWA_01_BHZ.png \
         --segment_len=3600 \
         --segment_overlap=0.5 \
         --rotate 10
@@ -35,17 +31,6 @@ if [ ! -f ./ppsd_AM_GBLCO_01_BHZ.png -o "$(find ./ppsd_AM_GBLCO_01_BHZ.png -mmin
         --respfile AM_GBLCO.xml \
         --channel AM.GBLCO.01.BHZ \
         --outfile ppsd_AM_GBLCO_01_BHZ.png \
-        --segment_len=3600 \
-        --segment_overlap=0.5 \
-        --rotate 10
-fi
-if [ ! -f ./ppsd_AM_XXXXX_01_BHZ.png -o "$(find ./ppsd_AM_XXXXX_01_BHZ.png -mmin +240)" ]; then
-    echo "XXXXX PPSD"
-    /usr/bin/python3 plot_ppsd.py \
-        --path /data/seismometer_data/mseed \
-        --respfile AM_XXXXX.xml \
-        --channel AM.XXXXX.01.BHZ \
-        --outfile ppsd_AM_XXXXX_01_BHZ.png \
         --segment_len=3600 \
         --segment_overlap=0.5 \
         --rotate 10
@@ -75,25 +60,19 @@ echo "Daily temperature plots"
 HOST="webserver_host"
 DEST="~/www/yuma/"
 SRCS=""
-SRCS+="helicorder_broadband_AM_OMDBO_01_BHZ.png "
+SRCS+="helicorder_broadband_AM_BCCWA_01_BHZ.png "
 SRCS+="helicorder_broadband_AM_GBLCO_01_BHZ.png "
-SRCS+="helicorder_broadband_AM_XXXXX_01_BHZ.png "
-SRCS+="helicorder_broadband_annotated_AM_OMDBO_01_BHZ.png "
+SRCS+="helicorder_broadband_annotated_AM_BCCWA_01_BHZ.png "
 SRCS+="helicorder_broadband_annotated_AM_GBLCO_01_BHZ.png "
-SRCS+="helicorder_broadband_annotated_AM_XXXXX_01_BHZ.png "
-SRCS+="helicorder_teleseismic_AM_OMDBO_01_BHZ.png "
+SRCS+="helicorder_teleseismic_AM_BCCWA_01_BHZ.png "
 SRCS+="helicorder_teleseismic_AM_GBLCO_01_BHZ.png "
-SRCS+="helicorder_teleseismic_AM_XXXXX_01_BHZ.png "
-SRCS+="helicorder_teleseismic_annotated_AM_OMDBO_01_BHZ.png "
+SRCS+="helicorder_teleseismic_annotated_AM_BCCWA_01_BHZ.png "
 SRCS+="helicorder_teleseismic_annotated_AM_GBLCO_01_BHZ.png "
-SRCS+="helicorder_teleseismic_annotated_AM_XXXXX_01_BHZ.png "
-SRCS+="ppsd_AM_OMDBO_01_BHZ.png "
+SRCS+="ppsd_AM_BCCWA_01_BHZ.png "
 SRCS+="ppsd_AM_GBLCO_01_BHZ.png "
-SRCS+="ppsd_AM_XXXXX_01_BHZ.png "
 SRCS+="ppsd_UO_WAGON__HHZ.png "
-SRCS+="daily_temperature_AM_OMDBO_01.png "
+SRCS+="daily_temperature_AM_BCCWA_01.png "
 SRCS+="daily_temperature_AM_GBLCO_01.png "
-SRCS+="daily_temperature_AM_XXXXX_01.png "
 echo "Copying files: ${SRCS}"
 scp ${SRCS} ${HOST}:${DEST}
 
