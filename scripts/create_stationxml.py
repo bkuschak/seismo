@@ -803,6 +803,100 @@ def create_station_omdbo():
             serial_number='')))
     return sta
 
+def create_station_bccwa():
+    sta = Station(
+        code = 'BCCWA',
+        latitude = 45.617450,
+        longitude = -122.498994,
+        elevation = 88.0,
+        creation_date = obspy.UTCDateTime(2025, 5, 14),
+        site = Site(name = 'BENNINGTON, CLARK COUNTY, WASHINGTON'))
+
+    cha = Channel(
+        code = 'BHZ',
+        location_code = '01',
+        latitude = sta.latitude,
+        longitude = sta.longitude,
+        elevation = sta.elevation,
+        depth = 0.0,
+        azimuth = 0.0,
+        dip = -90.0,
+        sample_rate = 125)      # FIXME
+
+    # Vertical
+    sta.channels.append(create_channel(
+        channel = 'BHZ',
+        location = '01',
+        latitude = sta.latitude,
+        longitude = sta.longitude,
+        elevation = sta.elevation,
+        depth = 1.0,
+        sensor_resp = Yuma2Response.lookup(serial_number='4').response(),
+        digitizer_resp = PsnAdc24Response().response(),
+        sample_rate = 125.0,
+        input_units_str = 'M/S',
+        input_units_desc = 'Velocity in meters per second',
+        sensor = Equipment(
+            description='Velocity sensor',
+            manufacturer='Nelson / Nordgren',
+            model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
+            serial_number='BK 4'),
+        data_logger = Equipment(
+            description='',
+            manufacturer='Webtronics',
+            model='PSN-ADC24 v1.5',
+            serial_number='')))
+
+    # Temperature sensor
+    # FIXME - instead, use PolynomialResponseStage to convert Temperature in degrees C to Voltage.
+    sta.channels.append(create_channel(
+        channel = 'LKS',
+        location = '01',
+        latitude = sta.latitude,
+        longitude = sta.longitude,
+        elevation = sta.elevation,
+        depth = 1.0,
+        sensor_resp = Yuma2Response.lookup(serial_number='4').temperature_response(),
+        digitizer_resp = PsnAdc24Response().response(),
+        sample_rate = 1.0,
+        input_units_str = 'degC',
+        input_units_desc = 'Degrees Centigrade',
+        sensor = Equipment(
+            description='PCB temperature sensor',
+            manufacturer='Nelson / Nordgren',
+            model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
+            serial_number='BK 4'),
+        data_logger = Equipment(
+            description='',
+            manufacturer='Webtronics',
+            model='PSN-ADC24 v1.5',
+            serial_number='')))
+
+    # Centering force
+    sta.channels.append(create_channel(
+        channel = 'LEC',
+        location = '01',
+        latitude = sta.latitude,
+        longitude = sta.longitude,
+        elevation = sta.elevation,
+        depth = 1.0,
+        sensor_resp = None,
+        digitizer_resp = PsnAdc24Response().response(),
+        sample_rate = 1.0,
+        input_units_str = 'Volts',
+        input_units_desc = 'Voltage',
+        sensor = Equipment(
+            description='Centering force',
+            manufacturer='Nelson / Nordgren',
+            model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
+            serial_number='BK 4'),
+        data_logger = Equipment(
+            description='',
+            manufacturer='Webtronics',
+            model='PSN-ADC24 v1.5',
+            serial_number='')))
+    return sta
+
 def create_station_xxxxx():
     yuma_sn = '3'
     sta = Station(
@@ -933,6 +1027,14 @@ def create_response_files():
     print(inv)
     generate_outputs(inv, net, omdbo)
 
+    # Station BCCWA
+    bccwa = create_station_bccwa()
+    inv, net = create_inv_net()
+    net.stations.append(bccwa)
+    inv.networks.append(net)
+    print(inv)
+    generate_outputs(inv, net, bccwa)
+
     # Station XXXXX
     xxxxx = create_station_xxxxx()
     inv, net = create_inv_net()
@@ -941,8 +1043,9 @@ def create_response_files():
     print(inv)
     generate_outputs(inv, net, xxxxx)
 
-    # Generate one combined file containing both stations.
+    # Generate one combined file containing all stations.
     net.stations.append(omdbo)
+    net.stations.append(bccwa)
     net.stations.append(gblco)
     print(inv)
     generate_outputs(inv, net, None, filename='all_stations.xml')
