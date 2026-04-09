@@ -5,6 +5,7 @@ import dateutil
 import datetime
 from obspy import UTCDateTime
 from obspy.core.inventory import Inventory, Network, Station, Channel, Site
+from obspy.core.stream import Stream
 from matplotlib.dates import HourLocator, MinuteLocator, SecondLocator, num2date
 
 import sys
@@ -37,6 +38,8 @@ Example: python %s --channel "AM.OMDBO.01.BHZ" --starttime "2024-07-31T04:30:00"
 
 parser = argparse.ArgumentParser(description=desc,
     formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument('--server', type=str, default='',
+    help='Seedlink server name.')
 parser.add_argument('--width', type=int, default=1400,
     help='Width of plot in pixels.')
 parser.add_argument('--height', type=int, default=600,
@@ -144,18 +147,16 @@ for c in args.channel:
     # Format is like this: AM_GBLCO_01_BHZ
     net, station, loc, chan = c.split('.')
 
-    # Use local files for our known channels.
-    if net == 'AM' and station in ['BCCWA', 'OMDBO', 'GBLCO', 'XXXXX']:
-        this_st = GetLocalDataRange(net, station, loc, chan, starttime, endtime)
+    # Use a seedlink server.
+    if len(args.server) > 0:
+        st += GetData(args.server, net, station, loc, chan, starttime, endtime)
 
-        # GBLCO appears to be inverted. Fix that.
-        if station == 'GBLCO' and chan == 'BHZ':
-            for t in this_st:
-                t.data = t.data * -1.0
+    # Else, use local files for our known channels.
+    elif net == 'AM' and station in ['BCCWA', 'OMDBO', 'GBLCO', 'XXXXX']:
+        st += GetLocalDataRange(net, station, loc, chan, starttime, endtime)
 
-        st += this_st
+    # Else, try to get the data from IRIS.
     else:
-        # Try to get the data from IRIS.
         st += GetIrisDataRange(net, station, loc, chan, starttime, endtime)
 
 
@@ -225,8 +226,11 @@ if args.lowpass is not None:
 starttrim = 0
 endtrim = 0
 if args.deconvolve:
-    starttrim = 360
-    endtrim = 200
+    #starttrim = 360
+    #endtrim = 200
+    # FIXME
+    starttrim = 0
+    endtrim = 0
 elif args.lowpass or args.highpass:
     starttrim = 180
     endtrim = 180
