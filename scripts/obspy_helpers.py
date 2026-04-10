@@ -256,6 +256,13 @@ def Helicorder(stream, filename, location, starttime, duration, freqmin=0,
 
     # Add any other drawing here.
     FixupAnnotations(fig)
+
+    # Make event markers semi-transparent yellow.
+    ax = fig.gca()
+    for l in ax.lines:
+        l._markerfacecolor = (1, 1, 0, 0.7)
+        l._markeredgecolor = (1, 1, 0, 0.5)
+
     fig.canvas.draw()
     fig.savefig(filename, bbox_inches='tight')
     #fig.savefig(filename)
@@ -268,9 +275,10 @@ def Spectrogram(stream, filename, starttime, duration, title=None, freqmin=0,
     print("Plotting spectrogram ", filename)
     st = stream.copy()
     # Filter first, then slice, to minimize filter startup transient.
-    if(freqmin != 0 and freqmax != 0):
-        st.filter("bandpass", freqmin=freqmin, freqmax=freqmax, corners=4, 
-            zerophase=True)
+    if freqmin != 0:
+        st.filter("highpass", freq=freqmin, corners=2, zerophase=True)
+    if freqmax != 0:
+        st.filter("lowpass", freq=freqmax, corners=8, zerophase=True)
     st = st.slice(starttime=starttime, endtime=starttime+duration)
     if(st == None or len(st) == 0):
         return      # no data to plot
@@ -287,13 +295,12 @@ def Spectrogram(stream, filename, starttime, duration, title=None, freqmin=0,
         (title_str, subtitle)
 
     # Don't plot to file immediately. Set the ylimit and title manually.
-    # FIXME
-    fig = st.spectrogram(log=False, per_lap=per_lap, wlen=wlen, dbscale=False, 
-    #fig = st.spectrogram(log=False, dbscale=False, 
-        show=False)
+    fig = st.spectrogram(log=False, per_lap=per_lap, wlen=wlen, dbscale=False,
+        clip=[0, 0.05], show=False)
     fig = fig[0]
     ax = fig.axes[0]
-    ax.set_ylim(0, freqmax)
+    if freqmax != 0:
+        ax.set_ylim(0, freqmax)
     ax.set_xlim(wlen/2, duration-wlen/2)
     ax.set_title(title_str, wrap=True)
     if vline != None:
@@ -306,11 +313,10 @@ def Spectrogram(stream, filename, starttime, duration, title=None, freqmin=0,
     plt.pyplot.close(fig)
 
 # Use the earth model to estimate arrival times of events.
-# Returns (desc, time_p, time_s)[]
+# Returns (event_time, desc, first_arrival, arrival_rayleigh)[]
 def GetArrivalTimes(events):
     event_time = []
-    arrival_p = []
-    arrival_s = []
+    arrival_first = []
     arrival_rayleigh = []
     desc = []
     for e in events:
@@ -318,26 +324,21 @@ def GetArrivalTimes(events):
            e.origins[0].latitude == None:
             continue
         model = TauPyModel()
-        arrivals = model.get_travel_times_geo(e.origins[0].depth/1000, 
-                e.origins[0].latitude, e.origins[0].longitude, site[0], site[1], 
+        arrivals = model.get_travel_times_geo(e.origins[0].depth/1000,
+                e.origins[0].latitude, e.origins[0].longitude, site[0], site[1],
                 phase_list=["P", "S"])
-        (d, a, z) = gps2dist_azimuth(site[0], site[1], 
+        (d, a, z) = gps2dist_azimuth(site[0], site[1],
                         e.origins[0].latitude, e.origins[0].longitude)
-        #print("Arrivals for event ", e)
-        #print(arrivals)
-        #print("Phase " + arrivals[0].name + " at " + str(arrivals[0].time))
-        # There may be multiple P and multiple S for a single quake.
         event_time.append(e.origins[0].time)
-        arrival_p.append(e.origins[0].time + 
-            min([0] or [a.time for a in arrivals if a.name == 'P']))
-        arrival_s.append(e.origins[0].time + 
-            min([0] or [a.time for a in arrivals if a.name == 'S']))
+        # First arrival of any phase (taup returns sorted by time).
+        first_time = arrivals[0].time if arrivals else 0
+        arrival_first.append(e.origins[0].time + first_time)
         # Rayleigh travel time approxmately 4.0 km/sec
         arrival_rayleigh.append(e.origins[0].time + d/1000 / 4.0)
-        desc.append('%s, %.1f %s, %.0f km away' % 
-                (e.event_descriptions[0].text, e.magnitudes[0].mag, 
+        desc.append('%s, %.1f %s, %.0f km away' %
+                (e.event_descriptions[0].text, e.magnitudes[0].mag,
                 e.magnitudes[0].magnitude_type, d/1000))
-    return zip(event_time, desc, arrival_p, arrival_s, arrival_rayleigh)
+    return zip(event_time, desc, arrival_first, arrival_rayleigh)
 
 ## Use the earth model to estimate arrival times of event.
 ## Returns array of (event, desc, times[])

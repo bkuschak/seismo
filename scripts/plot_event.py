@@ -179,7 +179,7 @@ deconvolved_str = ''
 if args.deconvolve:
     inv = Inventory()
     for c in args.channel:
-        # Format is like this: AM_GBLCO_01_BHZ
+        # Format is like this: AM.GBLCO.01.BHZ
         net, station, loc, chan = c.split('.')
         got_resp = False
 
