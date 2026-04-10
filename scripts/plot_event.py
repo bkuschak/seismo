@@ -14,8 +14,6 @@ from  obspy_helpers import *
 
 ################################################################################
 
-#site = (44.0464, -121.3151)     # OMDBO
-#site = (45.617450, -122.498994) # BCCWA
 site = (43.50999, -120.24793)   # GBLCO
 
 # Defaults
@@ -33,7 +31,7 @@ Generate seismic plot covering a certain time period.
 
   May specify multiple channels.
 
-Example: python %s --channel "AM.OMDBO.01.BHZ" --starttime "2024-07-31T04:30:00"
+Example: python %s --server archive.local:18000 --channel "AM.OMDBO.01.BHZ" --starttime "2024-07-31T04:30:00"
 ''' % (sys.argv[0])
 
 parser = argparse.ArgumentParser(description=desc,
@@ -44,27 +42,20 @@ parser.add_argument('--width', type=int, default=1400,
     help='Width of plot in pixels.')
 parser.add_argument('--height', type=int, default=600,
     help='Height of plot in pixels.')
-#parser.add_argument('--segment_len', type=int, dest='segment_len',
-    #default=segment_len, help='Length of time in seconds for each segment.')
-#parser.add_argument('--segment_overlap', type=float, dest='segment_overlap',
-    #default=segment_overlap, help='Overlap of segments, from 0.001 to 0.999.')
 parser.add_argument('--path', dest='path', default=path,
     help='Path to the directory of the MiniSEED files.')
 parser.add_argument('--outfile', dest='outfile', default=outfile,
 	help='Output filename (default is {}).'.format(outfile))
 parser.add_argument('--dpi', type=int, default=dpi,
     help='Pixels per inch ({} default).'.format(dpi))
-
 parser.add_argument('--lowpass', type=float, dest='lowpass',
     default=None, help='Low-pass filter corner frequency.')
 parser.add_argument('--highpass', type=float, dest='highpass',
     default=None, help='High-pass filter corner frequency.')
-
 parser.add_argument('--starttime', dest='starttime', default=None,
 	help='Start time of the data. Ex: 4/25/15 00:00 UTC')
 parser.add_argument('--endtime', dest='endtime', default=None,
 	help='End time of the data. Ex: 4/26/15 00:00 UTC')
-
 parser.add_argument('--eventtime', dest='eventtime', default=None,
 	help='Approximate time of the event. Ex: 4/26/15 00:00 UTC')
 parser.add_argument('--before', type=float, dest='before', default=60,
@@ -75,21 +66,16 @@ parser.add_argument('--search_time', type=float, dest='search_time', default=60,
 	help='Duration in seconds before and after the event to use when searching the event catalog.')
 parser.add_argument('--min_magnitude', type=float, dest='min_magnitude', default=3.0,
 	help='Minimum magnitude to use when searching the event catalog.')
-
 parser.add_argument('--channel', action='append', dest='channel', default=None,
     help='NETWORK.STATION.LOCATION.CHANNEL format. Multiple channels may be specified.')
 parser.add_argument('--no_detrend', dest='no_detrend', action='store_true',
     help='Do not detrend / demean the data.')
 parser.add_argument('--deconvolve', dest='deconvolve', action='store_true', 
     help='Deconvolve to remove the instrument response.')
-
 parser.add_argument('--wavfile', dest='wavfile', default=None,
     help='Save data to an audio WAV file.')
 parser.add_argument('--wavrate', type=float, dest='wavrate', default=8000,
     help='Set the WAV file sample rate.')
-
-#parser.add_argument('--show', action='count', default=None,
-    #help='Show the plot interactively.')
 parser.add_argument('-v', '--verbose', action='count',
     help='Increase verbosity.')
 args = parser.parse_args()
@@ -132,13 +118,33 @@ elif args.eventtime:
 
 else:
     print('Must specify either (--starttime and --endtime) or --eventtime.')
+    parser.print_usage()
     exit(1)
 
 print("Using data from startime:", starttime, "to endtime:", endtime)
 
+# If we're filtering, extend the start/end times to account for filter
+# transients which we will later trim off. We extend on both sides because the
+# filtering will be done as 'zerophase'.
+prefix = 1
+if args.lowpass is not None:
+    t = 4.0 / args.lowpass
+    if t < 1.0:
+        t = 1.0
+    if prefix < t:
+        prefix = t
+if args.highpass is not None:
+    t = 4.0 / args.highpass
+    if t < 1.0:
+        t = 1.0
+    if prefix < t:
+        prefix = t
+print('Adding', prefix, 'seconds to the requested start/end times to account for filtering.')
+
 # Add channels.
 if args.channel is None or len(args.channel) == 0:
     print('Must provide at least one --channel.')
+    parser.print_usage()
     exit(1)
 
 # Read the channel data.
@@ -149,20 +155,20 @@ for c in args.channel:
 
     # Use a seedlink server.
     if len(args.server) > 0:
-        st += GetData(args.server, net, station, loc, chan, starttime, endtime)
+        st += GetData(args.server, net, station, loc, chan, starttime-prefix, endtime+prefix)
 
     # Else, use local files for our known channels.
     elif net == 'AM' and station in ['BCCWA', 'OMDBO', 'GBLCO', 'XXXXX']:
-        st += GetLocalDataRange(net, station, loc, chan, starttime, endtime)
+        st += GetLocalDataRange(net, station, loc, chan, starttime-prefix, endtime+prefix)
 
     # Else, try to get the data from IRIS.
     else:
-        st += GetIrisDataRange(net, station, loc, chan, starttime, endtime)
+        st += GetIrisDataRange(net, station, loc, chan, starttime-prefix, endtime+prefix)
 
 
 # Clean up the trace(s).
 st.merge(method=0, fill_value='interpolate')
-st.trim(starttime=starttime, endtime=endtime)
+st.trim(starttime=starttime-prefix, endtime=endtime+prefix)
 if not args.no_detrend:
     st = st.detrend()
 print('Streams:\n', st.__str__(extended=True))
@@ -190,7 +196,7 @@ if args.deconvolve:
         if not got_resp:
             try:
                 print('Trying to read instrument response for {}.{}.{}.{} from IRIS.'.format(net, station, loc, chan))
-                inv_iris = GetIrisResponse(net, station, loc, chan, starttime, endtime)
+                inv_iris = GetIrisResponse(net, station, loc, chan, starttime-prefix, endtime+prefix)
                 got_resp = True
                 print('Read instrument response for {}.{}.{}.{} from IRIS.'.format(net, station, loc, chan))
                 fname = '{}_{}.xml'.format(net, station)
@@ -222,25 +228,11 @@ if args.lowpass is not None:
     st.filter('lowpass', freq=args.lowpass, corners=4, zerophase=True)
     filter_str += 'LP={:.2f} Hz. '.format(args.lowpass)
 
-# Try to remove the filtering transients
-starttrim = 0
-endtrim = 0
-if args.deconvolve:
-    #starttrim = 360
-    #endtrim = 200
-    # FIXME
-    starttrim = 0
-    endtrim = 0
-elif args.lowpass or args.highpass:
-    starttrim = 180
-    endtrim = 180
-if starttrim != 0 or endtrim != 0:
-    print('Trimming the stream to remove filter transients')
-    st.trim(starttime=starttime+starttrim, endtime=endtime-endtrim)
+# Trim to the requested start/end time.
+st.trim(starttime=starttime, endtime=endtime)
 
 # Plot
 print('Plotting streams as {}:\n'.format(args.outfile), st.__str__(extended=True))
-#fig = st.plot(show=False, size=(args.width,args.height), equal_scale=False, linewidth=1.0, color='blue')
 fig = st.plot(show=False, size=(args.width,args.height), equal_scale=True, linewidth=1.0, color='blue')
 ax = fig.gca()
 if arrivals:

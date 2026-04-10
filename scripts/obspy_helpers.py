@@ -52,7 +52,13 @@ def GetLocalDataRange(net, station, loc, chan, starttime, endtime):
 
 # Get the station data from a Seedlink server.
 def GetSeedlinkData(seedlink_addr, net, station, loc, chan, starttime, endtime):
-    client = SeedlinkClient(seedlink_addr)
+    if ':' in seedlink_addr:
+        host, port = seedlink_addr.rsplit(':', 1)
+        port = int(port)
+        client = SeedlinkClient(server=host, port=port)
+    else:
+        client = SeedlinkClient(seedlink_addr)
+
     st = client.get_waveforms(net, station, loc, chan, starttime, endtime)
     return st
 
