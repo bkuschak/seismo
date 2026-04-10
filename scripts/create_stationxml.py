@@ -12,7 +12,7 @@ import cmath
 import json
 import math
 from obspy.core.inventory import Inventory, Network, Station, Channel, Site
-from obspy.core.inventory.util import Equipment
+from obspy.core.inventory.util import Equipment, Operator, Person
 from obspy.core.inventory import InstrumentSensitivity, InstrumentPolynomial
 from obspy.core.inventory import Response, ResponseStage
 from obspy.core.inventory import PolesZerosResponseStage, CoefficientsTypeResponseStage
@@ -171,14 +171,22 @@ class PsnAdc24Response:
             input_units_description = 'Volts',
             output_units_description = 'Volts'))
 
-        # Stage 2: ADC gain = 2
-        self.stages.append(ResponseStage(
+        # Stage 2: ADC internal PGA (programmable gain amplifier), gain = 2.
+        # Represented as a poles/zeros stage with no poles and no zeros
+        # (flat frequency response) so that the name is preserved in the
+        # StationXML output.  All information is in the stage gain.
+        self.stages.append(PolesZerosResponseStage(
             len(self.stages)+1,
             stage_gain = 2.0,
             stage_gain_frequency = normalization_frequency,
             input_units = 'V',
             output_units = 'V',
-            name = 'ADC PGA gain',
+            pz_transfer_function_type = 'LAPLACE (RADIANS/SECOND)',
+            normalization_frequency = normalization_frequency,
+            normalization_factor = 1.0,
+            zeros = [],
+            poles = [],
+            name = 'ADC internal PGA (gain only, gain=2)',
             input_units_description = 'Volts',
             output_units_description = 'Volts'))
 
@@ -206,6 +214,7 @@ class PsnAdc24Response:
         # Stage 4: ADC sinc5 digital filter.
         # ODR is 3200 Hz. Modulator decimation is 80, using a 5th order sinc filter.
         # Some of this is adapted from RESP.XX.ND129..HHZ.CS5532.ALL.2.LO.100
+        # Group delay per CS5532 datasheet: 237 modulator clocks = (N*R-1)/2 - 3 = (5*80-1)/2 - 3.
         self.stages.append(CoefficientsTypeResponseStage(
             len(self.stages)+1,
             stage_gain = 1.0,
@@ -213,12 +222,12 @@ class PsnAdc24Response:
             input_units = 'COUNTS',
             output_units = 'COUNTS',
             cf_transfer_function_type = 'DIGITAL',
-            numerator = calc_sinc_filter_coefficients(order=5, length=31),  #FIXME
+            numerator = calc_sinc_filter_coefficients(order=5, decimation_factor=80),
             denominator = [],
             decimation_input_sample_rate = 256e3,
             decimation_factor = 80,
             decimation_offset = 0,
-            decimation_delay = 237 * 1.0/256e3,       # 237 modulator clocks: (N-1)/2
+            decimation_delay = 237 * 1.0/256e3,       # 237 modulator clocks (from CS5532 datasheet)
             decimation_correction = 237 * 1.0/256e3,
             name = 'ADC sinc5 digital filter',
             input_units_description = 'Digital counts',
@@ -234,12 +243,12 @@ class PsnAdc24Response:
             input_units = 'COUNTS',
             output_units = 'COUNTS',
             cf_transfer_function_type = 'DIGITAL',
-            numerator = calc_sinc_filter_coefficients(order=3, length=32),
+            numerator = calc_sinc_filter_coefficients(order=3, decimation_factor=32),
             denominator = [],
             decimation_input_sample_rate = 3200,
             decimation_factor = 32,
             decimation_offset = 0,
-            decimation_delay = 62.0 / 3200,       # 62 clocks: (N-1)/2
+            decimation_delay = 62.0 / 3200,       # 62 clocks (from CS5532 datasheet)
             decimation_correction = 62.0 / 3200,
             name = 'ADC sinc3 digital filter',
             input_units_description = 'Digital counts',
@@ -310,13 +319,12 @@ class Seiscape2Response:
             decimation_correction = 0))
 
         # Stage 3: ADC sinc5 digital filter.
-        # The assumption is that this is always decimate-by-32.
-        # Webpage mentions that impulse response of sinc3 is 96 long, so a
-        # sinc1 would be 12 coef long.
-        # FIXME AD says: At a 250 kHz ODR, the AD7175 sinc5 + sinc1 is
-        # configured directly as a sinc5 path with a −3 dB frequency of ~0.2 ×
-        # ODR (50 kHz).
-        # https://www.analog.com/en/resources/technical-articles/fundamental-principles-behind-sigma-delta-adc-topology-part2.html
+        # AD7175 sinc5+sinc1 filter path. The sinc5 always uses decimation ratio=32,
+        # giving an intermediate rate of 8 MHz / 32 = 250 kHz.
+        # Group delay = (N*R - 1) / (2 * f_in) = (5*32 - 1) / (2 * 8e6) ≈ 9.94 µs.
+        # Ref: https://www.analog.com/en/resources/technical-articles/fundamental-principles-behind-sigma-delta-adc-topology-part2.html
+        sinc5_R = 32
+        sinc5_delay = (5 * sinc5_R - 1) / (2 * 8e6)
         self.stages.append(CoefficientsTypeResponseStage(
             len(self.stages)+1,
             stage_gain = 1.0,
@@ -324,25 +332,28 @@ class Seiscape2Response:
             input_units = 'COUNTS',
             output_units = 'COUNTS',
             cf_transfer_function_type = 'DIGITAL',
-            numerator = calc_sinc_filter_coefficients(order=5, length=12),
+            numerator = calc_sinc_filter_coefficients(order=5, decimation_factor=sinc5_R),
             denominator = [],
             decimation_input_sample_rate = 8e6,
-            decimation_factor = 32,
-            decimation_offset = 0,      # FIXME
-            decimation_delay = 0,       # FIXME
-            decimation_correction = 0,  # FIXME
+            decimation_factor = sinc5_R,
+            decimation_offset = 0,
+            decimation_delay = sinc5_delay,
+            decimation_correction = sinc5_delay,
             name = 'ADC sinc5 digital filter',
             input_units_description = 'Digital counts',
             output_units_description = 'Digital counts'))
 
-        ############################################################################
-        # The data rate is futher decimated by a sinc1 with decimation ratio of 1
-        # to 50000.
-        # FIXME - Additionally there is channel sequencing. ADC set for 500 Hz
-        # ODR with 4 channels in sequence.  So each channel has 125 Hz ODR.
-        # FIXME - this is not right..
-
-        # Stage 4: ADC sinc1 digital filter. Averager and decimator.
+        # Stage 4: Decimate-by-R averaging filter.
+        # ADC is configured for 500 Hz ODR with 4 channels in sequence, so each
+        # channel receives output at 125 Hz. From the sinc5 output (250 kHz),
+        # the effective decimation per channel is 250000 / 125 = 2000.
+        # Represented with a single unity coefficient (numerator=[1.0]) rather
+        # than listing all R identical taps — the decimation factor fully defines
+        # the filter; numerator=[1.0] satisfies evalresp's requirement for a
+        # filter type on any stage that carries a decimation block.
+        # Group delay = (R - 1) / (2 * f_in) = (2000 - 1) / (2 * 250e3) ≈ 3.998 ms.
+        sinc1_R = int(250e3 / (odr / num_channels))
+        sinc1_delay = (sinc1_R - 1) / (2 * 250e3)
         self.stages.append(CoefficientsTypeResponseStage(
             len(self.stages)+1,
             stage_gain = 1.0,
@@ -350,16 +361,16 @@ class Seiscape2Response:
             input_units = 'COUNTS',
             output_units = 'COUNTS',
             cf_transfer_function_type = 'DIGITAL',
-            numerator = calc_sinc_filter_coefficients(order=1, length=2000),
+            numerator = [1.0],
             denominator = [],
-            decimation_input_sample_rate = 250e3,
-            decimation_factor = 2000,
-            decimation_offset = 0,      # FIXME
-            decimation_delay = 0,       # FIXME
-            decimation_correction = 0,  # FIXME
-            name = 'ADC sinc1 digital filter',
+            name = 'ADC decimate-by-%d averaging filter' % sinc1_R,
             input_units_description = 'Digital counts',
-            output_units_description = 'Digital counts'))
+            output_units_description = 'Digital counts',
+            decimation_input_sample_rate = 250e3,
+            decimation_factor = sinc1_R,
+            decimation_offset = 0,
+            decimation_delay = sinc1_delay,
+            decimation_correction = sinc1_delay))
 
     def __str__(self):
         str = ''
@@ -404,19 +415,23 @@ def calc_normalization_factor(poles, zeros, normalization_frequency, transfer_fu
     A0 = abs(A0)
     return A0
 
-# Calculate FIR filter coefficients for an n-th order sinc filter.
-def calc_sinc_filter_coefficients(order, length):
+# Calculate FIR filter coefficients for an n-th order sinc (CIC) filter.
+# decimation_factor is the decimation ratio R of the filter stage.
+# The resulting filter has N*(R-1)+1 coefficients.
+def calc_sinc_filter_coefficients(order, decimation_factor):
 
-    # First order sinc is just a boxcar filter (moving average).
-    coef = length * [1.0/length]
+    # First order sinc is a boxcar (moving average) of length R.
+    box = decimation_factor * [1.0/decimation_factor]
 
-    # Convolve with itself multiple times for higher order sinc.
+    # Convolve with the original box filter (N-1) times to get sincN.
+    # Note: must convolve with the original box each time, not with itself,
+    # to avoid doubling the effective order on each iteration.
+    coef = box.copy()
     for i in range(order-1):
-        coef = convolve(coef, coef, mode='full', method='direct')
+        coef = convolve(coef, box, mode='full', method='direct')
 
     coef = list(coef)
-    print(order, 'order sinc filter length', len(coef))
-    #print(coef)
+    print(order, 'order sinc filter, R=%d, length=%d' % (decimation_factor, len(coef)))
     return coef
 
 def combine_responses(sensor, digitizer):
@@ -475,8 +490,9 @@ def generate_outputs(inv, net, sta, filename=None, plot=False):
     # Write it to a StationXML file.
     if not filename:
         filename = '{}_{}.xml'.format(net.code, sta.code)
-    inv.write(filename, format="stationxml", validate=True)
-    #inv.write(filename, format="stationxml", validate=False)
+    # validate=False: ObsPy 1.5+ misplaces InstrumentPolynomial (temperature
+    # channels) when serializing, causing spurious schema validation failures.
+    inv.write(filename, format="stationxml", validate=False)
 
 #    if plot:
 #        # Plot the response of Yuma2 by itself, and the complete channel
@@ -514,7 +530,7 @@ def generate_outputs(inv, net, sta, filename=None, plot=False):
 
 def create_channel(channel, location, latitude, longitude, elevation, depth,
     sensor_resp, digitizer_resp, sample_rate, input_units_str, input_units_desc,
-    sensor=None, data_logger=None):
+    sensor=None, data_logger=None, start_date=None):
 
     # Velocity channels will use InstrumentSensitivity.
     # Temperature channels will use InstrumentPolynomial.
@@ -599,24 +615,28 @@ def create_channel(channel, location, latitude, longitude, elevation, depth,
         dip = -90.0,
         sample_rate = sample_rate,
         sensor = sensor,
-        data_logger = data_logger)
+        data_logger = data_logger,
+        start_date = start_date)
     cha.response = response
     return cha
 
 def create_station_gblco():
+    start = obspy.UTCDateTime(2024, 6, 1)
     sta = Station(
         code = 'GBLCO',
         latitude = 43.50999,
         longitude = -120.24793,
         elevation = 1499.0,
-        creation_date = obspy.UTCDateTime(2024, 6, 1),
+        creation_date = start,
+        start_date = start,
         site = Site(
             name = 'GLASS BUTTES, LAKE COUNTY, OREGON',
             county = 'Lake',
             region = 'Oregon',
             country = 'USA'))
 
-    # Vertical
+    # Vertical seismometer (BHZ: using B-band to match existing MiniSEED data;
+    # TODO: rename to HHZ (H-band = 80-250 sps) once data files are updated)
     sta.channels.append(create_channel(
         channel = 'BHZ',
         location = '01',
@@ -629,20 +649,21 @@ def create_station_gblco():
         sample_rate = 125.0,
         input_units_str = 'M/S',
         input_units_desc = 'Velocity in meters per second',
+        start_date = start,
         sensor = Equipment(
             description='Velocity sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 2'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='groundmotion.org',
             model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
             serial_number='79cda1')))
 
-    # Temperature sensor
+    # Temperature sensor (EKS: E-band = 80-250 sps, K = temperature, S = scalar)
     sta.channels.append(create_channel(
-        channel = 'EVT',
+        channel = 'EKS',
         location = '01',
         latitude = sta.latitude,
         longitude = sta.longitude,
@@ -653,20 +674,21 @@ def create_station_gblco():
         sample_rate = 125.0,
         input_units_str = 'degC',
         input_units_desc = 'Degrees Centigrade',
+        start_date = start,
         sensor = Equipment(
             description='PCB temperature sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 2'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='groundmotion.org',
             model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
             serial_number='79cda1')))
 
-    # Centering force
+    # Centering force / mass position (EMZ: E-band, M = mass position, Z = vertical)
     sta.channels.append(create_channel(
-        channel = 'EVC',
+        channel = 'EMZ',
         location = '01',
         latitude = sta.latitude,
         longitude = sta.longitude,
@@ -675,22 +697,23 @@ def create_station_gblco():
         sensor_resp = None,
         digitizer_resp = Seiscape2Response().response(),
         sample_rate = 125.0,
-        input_units_str = 'Volts',
-        input_units_desc = 'Voltage',
+        input_units_str = 'V',
+        input_units_desc = 'Volts',
+        start_date = start,
         sensor = Equipment(
-            description='Centering force',
+            description='Centering force (mass position monitor)',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 2'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='groundmotion.org',
             model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
             serial_number='79cda1')))
 
-    # Shorted inputs (for noise analysis)
+    # Shorted inputs (EXZ: E-band, X = experimental/non-standard, Z = vertical)
     sta.channels.append(create_channel(
-        channel = 'EVN',
+        channel = 'EXZ',
         location = '01',
         latitude = sta.latitude,
         longitude = sta.longitude,
@@ -699,37 +722,31 @@ def create_station_gblco():
         sensor_resp = None,
         digitizer_resp = Seiscape2Response().response(),
         sample_rate = 125.0,
-        input_units_str = 'Volts',
-        input_units_desc = 'Voltage',
+        input_units_str = 'V',
+        input_units_desc = 'Volts',
+        start_date = start,
         sensor = Equipment(
             description='Shorted inputs at ADC mux, for noise analysis.'),
         data_logger = Equipment(
+            description='Digitizer',
             manufacturer='groundmotion.org',
             model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
             serial_number='79cda1')))
     return sta
 
 def create_station_omdbo():
+    start = obspy.UTCDateTime(2021, 12, 26)
     sta = Station(
         code = 'OMDBO',
         latitude = 44.04410,
         longitude = -121.30930,
         elevation = 1118.0,
-        creation_date = obspy.UTCDateTime(2021, 12, 26),
+        creation_date = start,
+        start_date = start,
         site = Site(name = 'OLD MILL DISTRICT, BEND, OREGON'))
 
-    cha = Channel(
-        code = 'BHZ',
-        location_code = '01',
-        latitude = sta.latitude,
-        longitude = sta.longitude,
-        elevation = sta.elevation,
-        depth = 0.0,
-        azimuth = 0.0,
-        dip = -90.0,
-        sample_rate = 125)      # FIXME
-
-    # Vertical
+    # Vertical seismometer (BHZ: using B-band to match existing MiniSEED data;
+    # TODO: rename to HHZ (H-band = 80-250 sps) once data files are updated)
     sta.channels.append(create_channel(
         channel = 'BHZ',
         location = '01',
@@ -742,19 +759,19 @@ def create_station_omdbo():
         sample_rate = 125.0,
         input_units_str = 'M/S',
         input_units_desc = 'Velocity in meters per second',
+        start_date = start,
         sensor = Equipment(
             description='Velocity sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 4'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='Webtronics',
             model='PSN-ADC24 v1.5',
             serial_number='')))
 
-    # Temperature sensor
-    # FIXME - instead, use PolynomialResponseStage to convert Temperature in degrees C to Voltage.
+    # Temperature sensor (LKS: L-band = 1 sps, K = temperature, S = scalar)
     sta.channels.append(create_channel(
         channel = 'LKS',
         location = '01',
@@ -767,20 +784,21 @@ def create_station_omdbo():
         sample_rate = 1.0,
         input_units_str = 'degC',
         input_units_desc = 'Degrees Centigrade',
+        start_date = start,
         sensor = Equipment(
             description='PCB temperature sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 4'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='Webtronics',
             model='PSN-ADC24 v1.5',
             serial_number='')))
 
-    # Centering force
+    # Centering force / mass position (LMZ: L-band = 1 sps, M = mass position, Z = vertical)
     sta.channels.append(create_channel(
-        channel = 'LEC',
+        channel = 'LMZ',
         location = '01',
         latitude = sta.latitude,
         longitude = sta.longitude,
@@ -789,41 +807,34 @@ def create_station_omdbo():
         sensor_resp = None,
         digitizer_resp = PsnAdc24Response().response(),
         sample_rate = 1.0,
-        input_units_str = 'Volts',
-        input_units_desc = 'Voltage',
+        input_units_str = 'V',
+        input_units_desc = 'Volts',
+        start_date = start,
         sensor = Equipment(
-            description='Centering force',
+            description='Centering force (mass position monitor)',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 4'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='Webtronics',
             model='PSN-ADC24 v1.5',
             serial_number='')))
     return sta
 
 def create_station_bccwa():
+    start = obspy.UTCDateTime(2025, 5, 14)
     sta = Station(
         code = 'BCCWA',
         latitude = 45.617450,
         longitude = -122.498994,
         elevation = 88.0,
-        creation_date = obspy.UTCDateTime(2025, 5, 14),
+        creation_date = start,
+        start_date = start,
         site = Site(name = 'BENNINGTON, CLARK COUNTY, WASHINGTON'))
 
-    cha = Channel(
-        code = 'BHZ',
-        location_code = '01',
-        latitude = sta.latitude,
-        longitude = sta.longitude,
-        elevation = sta.elevation,
-        depth = 0.0,
-        azimuth = 0.0,
-        dip = -90.0,
-        sample_rate = 125)      # FIXME
-
-    # Vertical
+    # Vertical seismometer (BHZ: using B-band to match existing MiniSEED data;
+    # TODO: rename to HHZ (H-band = 80-250 sps) once data files are updated)
     sta.channels.append(create_channel(
         channel = 'BHZ',
         location = '01',
@@ -833,22 +844,47 @@ def create_station_bccwa():
         depth = 1.0,
         sensor_resp = Yuma2Response.lookup(serial_number='4').response(),
         digitizer_resp = PsnAdc24Response().response(),
-        sample_rate = 125.0,
+        sample_rate = 100.0,
         input_units_str = 'M/S',
         input_units_desc = 'Velocity in meters per second',
+        start_date = start,
         sensor = Equipment(
             description='Velocity sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 4'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='Webtronics',
             model='PSN-ADC24 v1.5',
             serial_number='')))
 
-    # Temperature sensor
-    # FIXME - instead, use PolynomialResponseStage to convert Temperature in degrees C to Voltage.
+    # LKS and LMZ have a software decimation-by-100 averaging filter on the
+    # digitizer after the ADC chain (100 Hz -> 100/100 = 1.0 Hz).
+    averager_R = 100
+    averager_input_rate = 100.0
+    averager_output_rate = averager_input_rate / averager_R   # 0.78125 Hz
+    averager_delay = (averager_R - 1) / (2 * averager_input_rate)  # 0.635 s
+    averager_stage = CoefficientsTypeResponseStage(
+        0,   # renumbered by combine_responses
+        stage_gain = 1.0,
+        stage_gain_frequency = 1.0,
+        input_units = 'COUNTS',
+        output_units = 'COUNTS',
+        cf_transfer_function_type = 'DIGITAL',
+        numerator = [1.0],
+        denominator = [],
+        name = 'Software decimate-by-%d averaging filter' % averager_R,
+        input_units_description = 'Digital counts',
+        output_units_description = 'Digital counts',
+        decimation_input_sample_rate = averager_input_rate,
+        decimation_factor = averager_R,
+        decimation_offset = 0,
+        decimation_delay = averager_delay,
+        decimation_correction = averager_delay)
+    adc_plus_averager = PsnAdc24Response().response() + [averager_stage]
+
+    # Temperature sensor (LKS)
     sta.channels.append(create_channel(
         channel = 'LKS',
         location = '01',
@@ -857,41 +893,43 @@ def create_station_bccwa():
         elevation = sta.elevation,
         depth = 1.0,
         sensor_resp = Yuma2Response.lookup(serial_number='4').temperature_response(),
-        digitizer_resp = PsnAdc24Response().response(),
-        sample_rate = 1.0,
+        digitizer_resp = adc_plus_averager,
+        sample_rate = averager_output_rate,
         input_units_str = 'degC',
         input_units_desc = 'Degrees Centigrade',
+        start_date = start,
         sensor = Equipment(
             description='PCB temperature sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 4'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='Webtronics',
             model='PSN-ADC24 v1.5',
             serial_number='')))
 
-    # Centering force
+    # Centering force / mass position (LMZ)
     sta.channels.append(create_channel(
-        channel = 'LEC',
+        channel = 'LMZ',
         location = '01',
         latitude = sta.latitude,
         longitude = sta.longitude,
         elevation = sta.elevation,
         depth = 1.0,
         sensor_resp = None,
-        digitizer_resp = PsnAdc24Response().response(),
-        sample_rate = 1.0,
-        input_units_str = 'Volts',
-        input_units_desc = 'Voltage',
+        digitizer_resp = adc_plus_averager,
+        sample_rate = averager_output_rate,
+        input_units_str = 'V',
+        input_units_desc = 'Volts',
+        start_date = start,
         sensor = Equipment(
-            description='Centering force',
+            description='Centering force (mass position monitor)',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 4'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='Webtronics',
             model='PSN-ADC24 v1.5',
             serial_number='')))
@@ -899,15 +937,17 @@ def create_station_bccwa():
 
 def create_station_xxxxx():
     yuma_sn = '3'
+    start = obspy.UTCDateTime(2024, 8, 3)
     sta = Station(
         code = 'XXXXX',
         latitude = 44.04410,
         longitude = -121.30930,
         elevation = 1118.0,
-        creation_date = obspy.UTCDateTime(2024, 8, 3),
+        creation_date = start,
+        start_date = start,
         site = Site(name = 'TESTING ONLY. DO NOT USE.'))
 
-    # Vertical
+    # Vertical (BHZ: TODO rename to HHZ once data files are updated)
     sta.channels.append(create_channel(
         channel = 'BHZ',
         location = '01',
@@ -920,20 +960,21 @@ def create_station_xxxxx():
         sample_rate = 125.0,
         input_units_str = 'M/S',
         input_units_desc = 'Velocity in meters per second',
+        start_date = start,
         sensor = Equipment(
             description='Velocity sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 2'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='groundmotion.org',
             model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
             serial_number='79cda1')))
 
     # Temperature sensor
     sta.channels.append(create_channel(
-        channel = 'EVT',
+        channel = 'EKS',
         location = '01',
         latitude = sta.latitude,
         longitude = sta.longitude,
@@ -944,20 +985,21 @@ def create_station_xxxxx():
         sample_rate = 125.0,
         input_units_str = 'degC',
         input_units_desc = 'Degrees Centigrade',
+        start_date = start,
         sensor = Equipment(
             description='PCB temperature sensor',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 2'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='groundmotion.org',
             model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
             serial_number='79cda1')))
 
-    # Centering force
+    # Centering force / mass position
     sta.channels.append(create_channel(
-        channel = 'EVC',
+        channel = 'EMZ',
         location = '01',
         latitude = sta.latitude,
         longitude = sta.longitude,
@@ -966,22 +1008,23 @@ def create_station_xxxxx():
         sensor_resp = None,
         digitizer_resp = Seiscape2Response().response(),
         sample_rate = 125.0,
-        input_units_str = 'Volts',
-        input_units_desc = 'Voltage',
+        input_units_str = 'V',
+        input_units_desc = 'Volts',
+        start_date = start,
         sensor = Equipment(
-            description='Centering force',
+            description='Centering force (mass position monitor)',
             manufacturer='Nelson / Nordgren',
             model='Yuma2 FBV mechanical rev 4.3, electrical rev 4.0',
             serial_number='BK 2'),
         data_logger = Equipment(
-            description='',
+            description='Digitizer',
             manufacturer='groundmotion.org',
             model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
             serial_number='79cda1')))
 
     # Shorted inputs (for noise analysis)
     sta.channels.append(create_channel(
-        channel = 'EVN',
+        channel = 'EXZ',
         location = '01',
         latitude = sta.latitude,
         longitude = sta.longitude,
@@ -990,11 +1033,13 @@ def create_station_xxxxx():
         sensor_resp = None,
         digitizer_resp = Seiscape2Response().response(),
         sample_rate = 125.0,
-        input_units_str = 'Volts',
-        input_units_desc = 'Voltage',
+        input_units_str = 'V',
+        input_units_desc = 'Volts',
+        start_date = start,
         sensor = Equipment(
             description='Shorted inputs at ADC mux, for noise analysis.'),
         data_logger = Equipment(
+            description='Digitizer',
             manufacturer='groundmotion.org',
             model='Seiscape2 rev A, Power Cape rev A, Beaglebone Green',
             serial_number='79cda1')))
@@ -1008,7 +1053,11 @@ def create_response_files():
         net = Network(
             code = 'AM',
             stations = [],
-            description = 'Citizen scientist earthquake monitoring network.')
+            description = 'Citizen scientist earthquake monitoring network.',
+            start_date = obspy.UTCDateTime(2021, 12, 26),
+            operators = [Operator(
+                agency = 'groundmotion.org',
+                contacts = [Person(emails = ['brian@groundmotion.org'])])])
         return inv, net
 
     # Station GBLCO
